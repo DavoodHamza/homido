@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TextInput, Image, Pressable, Alert } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useThemeStore } from '@/hooks/useThemeStore';
@@ -26,17 +26,24 @@ const FEATURED_VENDORS = [
 export default function Home() {
   const theme = useTheme();
   const { themeMode, toggleTheme } = useThemeStore();
-  
+
   // State for filtering and sorting
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'rating' | 'time'>('rating');
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [minRating, setMinRating] = useState<number>(0);
+
+  // Temporary states for Modal to apply on press
+  const [tempSortBy, setTempSortBy] = useState<'rating' | 'time'>('rating');
+  const [tempMinRating, setTempMinRating] = useState<number>(0);
 
   // Filter & Sort Logic
   const filteredVendors = FEATURED_VENDORS.filter(vendor => {
     const matchesCategory = selectedCategory === 'all' || vendor.category === selectedCategory;
     const matchesSearch = vendor.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    const matchesRating = vendor.rating >= minRating;
+    return matchesCategory && matchesSearch && matchesRating;
   }).sort((a, b) => {
     if (sortBy === 'rating') {
       return b.rating - a.rating; // Highest rating first
@@ -45,19 +52,22 @@ export default function Home() {
     }
   });
 
-  const toggleSort = () => {
-    const nextSort = sortBy === 'rating' ? 'time' : 'rating';
-    setSortBy(nextSort);
-    Alert.alert(
-      "Sorting Changed",
-      nextSort === 'rating' ? "Showing top-rated kitchens first." : "Showing fastest delivery kitchens first."
-    );
+  const openFilterModal = () => {
+    setTempSortBy(sortBy);
+    setTempMinRating(minRating);
+    setFilterModalVisible(true);
+  };
+
+  const applyFilters = () => {
+    setSortBy(tempSortBy);
+    setMinRating(tempMinRating);
+    setFilterModalVisible(false);
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        
+
         {/* Header - Location */}
         <View style={styles.header}>
           <View style={styles.locationContainer}>
@@ -69,10 +79,10 @@ export default function Home() {
           </View>
           <View style={styles.headerActions}>
             <Pressable onPress={toggleTheme} style={{ padding: 8, marginRight: 4 }}>
-              <Ionicons 
-                name={themeMode === 'dark' ? "sunny" : "moon"} 
-                size={22} 
-                color={theme.text} 
+              <Ionicons
+                name={themeMode === 'dark' ? "sunny" : "moon"}
+                size={22}
+                color={theme.text}
               />
             </Pressable>
             <View style={styles.profileButton}>
@@ -85,7 +95,7 @@ export default function Home() {
         <View style={styles.searchContainer}>
           <View style={[styles.searchBar, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <Ionicons name="search" size={20} color={theme.textSecondary} style={{ marginRight: 8 }} />
-            <TextInput 
+            <TextInput
               placeholder="Search for food, chefs..."
               placeholderTextColor={theme.textSecondary}
               style={[styles.searchInput, { color: theme.text }]}
@@ -98,11 +108,11 @@ export default function Home() {
               </Pressable>
             )}
           </View>
-          <Pressable 
-            onPress={toggleSort}
+          <Pressable
+            onPress={openFilterModal}
             style={[styles.filterButton, { backgroundColor: theme.primary }]}
           >
-            <Ionicons name={sortBy === 'rating' ? "star" : "time"} size={20} color="#FFF" />
+            <Ionicons name="options-outline" size={20} color="#FFF" />
           </Pressable>
         </View>
 
@@ -113,13 +123,13 @@ export default function Home() {
             {CATEGORIES.map((cat) => {
               const isSelected = selectedCategory === cat.id;
               return (
-                <Pressable 
-                  key={cat.id} 
+                <Pressable
+                  key={cat.id}
                   onPress={() => setSelectedCategory(cat.id)}
                   style={[
-                    styles.categoryItem, 
-                    isSelected 
-                      ? { borderColor: theme.primary, borderWidth: 2, backgroundColor: theme.card } 
+                    styles.categoryItem,
+                    isSelected
+                      ? { borderColor: theme.primary, borderWidth: 2, backgroundColor: theme.card }
                       : { borderColor: theme.border, borderWidth: 1, backgroundColor: theme.card }
                   ]}
                 >
@@ -151,7 +161,7 @@ export default function Home() {
               Sort: {sortBy === 'rating' ? 'Rating' : 'Delivery Time'}
             </ThemedText>
           </View>
-          
+
           {filteredVendors.length > 0 ? (
             filteredVendors.map(vendor => (
               <View key={vendor.id} style={[styles.vendorCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -178,8 +188,124 @@ export default function Home() {
             </View>
           )}
         </View>
-        
+
       </ScrollView>
+
+      {/* Modern Bottom Filter Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={filterModalVisible}
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setFilterModalVisible(false)}
+        >
+          <Pressable
+            style={[styles.modalContainer, { backgroundColor: theme.card }]}
+            onPress={(e) => e.stopPropagation()} // Prevent closing on content tap
+          >
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Filters & Sort</ThemedText>
+              <Pressable onPress={() => setFilterModalVisible(false)}>
+                <Ionicons name="close" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+
+            {/* Sort Section */}
+            <View style={styles.modalSection}>
+              <ThemedText style={styles.modalSectionTitle}>Sort By</ThemedText>
+              <View style={styles.modalOptionRow}>
+                <Pressable
+                  onPress={() => setTempSortBy('rating')}
+                  style={[
+                    styles.modalOption,
+                    { borderColor: theme.border },
+                    tempSortBy === 'rating' && [styles.modalOptionActive, { backgroundColor: theme.primary, borderColor: theme.primary }]
+                  ]}
+                >
+                  <ThemedText
+                    style={[
+                      styles.modalOptionText,
+                      { color: theme.text },
+                      tempSortBy === 'rating' && styles.modalOptionActiveText
+                    ]}
+                  >
+                    Top Rated ⭐️
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  onPress={() => setTempSortBy('time')}
+                  style={[
+                    styles.modalOption,
+                    { borderColor: theme.border },
+                    tempSortBy === 'time' && [styles.modalOptionActive, { backgroundColor: theme.primary, borderColor: theme.primary }]
+                  ]}
+                >
+                  <ThemedText
+                    style={[
+                      styles.modalOptionText,
+                      { color: theme.text },
+                      tempSortBy === 'time' && styles.modalOptionActiveText
+                    ]}
+                  >
+                    Fastest Delivery 🕒
+                  </ThemedText>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Minimum Rating Section */}
+            <View style={styles.modalSection}>
+              <ThemedText style={styles.modalSectionTitle}>Minimum Rating</ThemedText>
+              <View style={styles.modalOptionRow}>
+                {[0, 4.5, 4.8].map((ratingVal) => (
+                  <Pressable
+                    key={ratingVal}
+                    onPress={() => setTempMinRating(ratingVal)}
+                    style={[
+                      styles.modalOption,
+                      { borderColor: theme.border },
+                      tempMinRating === ratingVal && [styles.modalOptionActive, { backgroundColor: theme.primary, borderColor: theme.primary }]
+                    ]}
+                  >
+                    <ThemedText
+                      style={[
+                        styles.modalOptionText,
+                        { color: theme.text },
+                        tempMinRating === ratingVal && styles.modalOptionActiveText
+                      ]}
+                    >
+                      {ratingVal === 0 ? "Show All" : `${ratingVal}⭐️ +`}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.modalActionRow}>
+              <Pressable
+                onPress={() => {
+                  setTempSortBy('rating');
+                  setTempMinRating(0);
+                }}
+                style={[styles.modalBtn, { borderColor: theme.border, borderWidth: 1 }]}
+              >
+                <ThemedText style={{ color: theme.textSecondary, fontWeight: '600' }}>Reset</ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={applyFilters}
+                style={[styles.modalBtn, styles.modalApplyBtn, { backgroundColor: theme.primary }]}
+              >
+                <ThemedText style={styles.modalApplyBtnText}>Apply</ThemedText>
+              </Pressable>
+            </View>
+
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -317,4 +443,73 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 40,
   },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 34,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  modalSection: {
+    marginBottom: 24,
+  },
+  modalSectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  modalOptionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  modalOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  modalOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modalOptionActive: {},
+  modalOptionActiveText: {
+    color: '#FFFFFF',
+  },
+  modalActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 10,
+  },
+  modalBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalApplyBtn: {},
+  modalApplyBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
+  },
 });
+
