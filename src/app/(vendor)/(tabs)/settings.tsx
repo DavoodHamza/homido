@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Switch, TextInput } from 'react-native';
+import { View, StyleSheet, ScrollView, Switch, TextInput, Pressable } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 
 export default function VendorSettings() {
   const theme = useTheme();
@@ -111,11 +112,25 @@ export default function VendorSettings() {
           </View>
         </Card>
 
+        <Pressable
+          style={[styles.switchRole, { backgroundColor: theme.card, borderColor: theme.border }]}
+          onPress={() => {
+            useAuthStore.getState().login('user');
+            router.replace('/(user)/(tabs)');
+          }}
+        >
+          <Ionicons name="swap-horizontal" size={20} color={theme.primary} />
+          <ThemedText style={{ color: theme.primary, fontWeight: '600', marginLeft: 8 }}>Switch back to User</ThemedText>
+        </Pressable>
+
         <Button 
           title="Logout" 
           variant="secondary" 
-          onPress={logout}
-          style={{ marginTop: 24, marginBottom: 40 }} 
+          onPress={() => {
+            logout();
+            router.replace('/(auth)/login');
+          }}
+          style={{ marginBottom: 40 }} 
         />
       </ScrollView>
     </SafeAreaView>
@@ -179,5 +194,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 4,
-  }
+  },
+  switchRole: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 16,
+    marginTop: 8,
+    marginBottom: 12,
+  },
 });

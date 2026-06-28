@@ -1,11 +1,11 @@
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/hooks/useAuthStore';
+import { router } from 'expo-router';
 
 export default function AdminDashboard() {
   const theme = useTheme();
@@ -17,73 +17,117 @@ export default function AdminDashboard() {
         
         <View style={styles.header}>
           <ThemedText type="title">Admin Overview</ThemedText>
+          <Pressable
+            onPress={() => {
+              logout();
+              router.replace('/(auth)/login');
+            }}
+          >
+            <Ionicons name="log-out-outline" size={24} color={theme.error} />
+          </Pressable>
         </View>
 
         {/* Global Stats */}
         <View style={styles.statsGrid}>
-          <Card style={[styles.statCard, { backgroundColor: theme.primary + '15' }]}>
-            <View style={styles.statIconContainer}>
-              <Ionicons name="people" size={24} color={theme.primary} />
+          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.statIconBg, { backgroundColor: theme.primary + '15' }]}>
+              <Ionicons name="people" size={22} color={theme.primary} />
             </View>
-            <ThemedText style={{ color: theme.textSecondary, marginTop: 12 }}>Total Users</ThemedText>
-            <ThemedText style={{ fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>1,420</ThemedText>
-          </Card>
+            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>Total Users</ThemedText>
+            <ThemedText type="stat" style={{ color: theme.text }}>1,420</ThemedText>
+          </View>
           
-          <Card style={[styles.statCard, { backgroundColor: theme.accent + '15' }]}>
-            <View style={styles.statIconContainer}>
-              <Ionicons name="storefront" size={24} color={theme.accent} />
+          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.statIconBg, { backgroundColor: theme.accent + '15' }]}>
+              <Ionicons name="storefront" size={22} color={theme.accent} />
             </View>
-            <ThemedText style={{ color: theme.textSecondary, marginTop: 12 }}>Total Vendors</ThemedText>
-            <ThemedText style={{ fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>85</ThemedText>
-          </Card>
+            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>Total Vendors</ThemedText>
+            <ThemedText type="stat" style={{ color: theme.text }}>85</ThemedText>
+          </View>
         </View>
 
-        <Card style={styles.projectionCard}>
-          <View style={styles.projectionHeader}>
+        <View style={styles.statsGrid}>
+          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.statIconBg, { backgroundColor: theme.success + '15' }]}>
+              <Ionicons name="receipt" size={22} color={theme.success} />
+            </View>
+            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>Total Orders</ThemedText>
+            <ThemedText type="stat" style={{ color: theme.text }}>3,245</ThemedText>
+          </View>
+
+          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.statIconBg, { backgroundColor: theme.error + '15' }]}>
+              <Ionicons name="alert-circle" size={22} color={theme.error} />
+            </View>
+            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>Pending</ThemedText>
+            <ThemedText type="stat" style={{ color: theme.text }}>15</ThemedText>
+          </View>
+        </View>
+
+        {/* Revenue Card */}
+        <View style={[styles.revenueCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={styles.revenueHeader}>
             <View>
-              <ThemedText style={{ color: theme.textSecondary }}>Platform Revenue (30 days)</ThemedText>
-              <ThemedText style={{ fontSize: 28, fontWeight: 'bold', marginTop: 4 }}>₹45,200</ThemedText>
+              <ThemedText style={[styles.revenueLabel, { color: theme.textSecondary }]}>Platform Revenue (30 days)</ThemedText>
+              <ThemedText type="bigStat" style={{ marginTop: 4 }}>₹45,200</ThemedText>
             </View>
             <View style={[styles.trendBadge, { backgroundColor: theme.success + '20' }]}>
               <Ionicons name="trending-up" size={16} color={theme.success} />
-              <ThemedText style={{ color: theme.success, fontWeight: 'bold', marginLeft: 4 }}>8%</ThemedText>
+              <ThemedText style={{ color: theme.success, fontWeight: '700', marginLeft: 4, fontSize: 13 }}>+8%</ThemedText>
             </View>
           </View>
-        </Card>
+        </View>
 
-        {/* Pending Actions */}
+        {/* Action Required */}
         <View style={styles.section}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>Action Required</ThemedText>
           
-          <Card style={styles.actionCard}>
-            <View style={styles.actionIcon}>
-              <Ionicons name="alert-circle" size={24} color={theme.error} />
+          <Pressable style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.actionIconBg, { backgroundColor: theme.error + '15' }]}>
+              <Ionicons name="alert-circle" size={22} color={theme.error} />
             </View>
             <View style={styles.actionText}>
-              <ThemedText style={{ fontWeight: 'bold' }}>3 Vendors Awaiting Approval</ThemedText>
-              <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }}>Review new vendor applications.</ThemedText>
+              <ThemedText style={{ fontWeight: '600', fontSize: 15 }}>3 Vendors Awaiting Approval</ThemedText>
+              <ThemedText style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>Review new vendor applications</ThemedText>
             </View>
             <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-          </Card>
+          </Pressable>
 
-          <Card style={styles.actionCard}>
-            <View style={styles.actionIcon}>
-              <Ionicons name="warning" size={24} color={theme.accent} />
+          <Pressable style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.actionIconBg, { backgroundColor: theme.accent + '15' }]}>
+              <Ionicons name="warning" size={22} color={theme.accent} />
             </View>
             <View style={styles.actionText}>
-              <ThemedText style={{ fontWeight: 'bold' }}>12 Flagged Orders</ThemedText>
-              <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }}>Orders taking too long to accept.</ThemedText>
+              <ThemedText style={{ fontWeight: '600', fontSize: 15 }}>12 Flagged Orders</ThemedText>
+              <ThemedText style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>Orders taking too long to accept</ThemedText>
             </View>
             <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-          </Card>
+          </Pressable>
+
+          <Pressable style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.actionIconBg, { backgroundColor: theme.primary + '15' }]}>
+              <Ionicons name="chatbubbles" size={22} color={theme.primary} />
+            </View>
+            <View style={styles.actionText}>
+              <ThemedText style={{ fontWeight: '600', fontSize: 15 }}>5 Support Tickets</ThemedText>
+              <ThemedText style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>Unresolved customer issues</ThemedText>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+          </Pressable>
         </View>
 
-        <Button 
-          title="Logout" 
-          variant="secondary" 
-          onPress={logout}
-          style={{ marginTop: 24, marginBottom: 40 }} 
-        />
+        {/* Back to User */}
+        <Pressable
+          style={[styles.switchRole, { backgroundColor: theme.card, borderColor: theme.border }]}
+          onPress={() => {
+            useAuthStore.getState().login('user');
+            router.replace('/(user)/(tabs)');
+          }}
+        >
+          <Ionicons name="swap-horizontal" size={20} color={theme.primary} />
+          <ThemedText style={{ color: theme.primary, fontWeight: '600', marginLeft: 8 }}>Switch back to User</ThemedText>
+        </Pressable>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -94,61 +138,92 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    padding: 20,
     paddingBottom: 40,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 24,
   },
   statsGrid: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 24,
+    gap: 12,
+    marginBottom: 12,
   },
   statCard: {
     flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
     padding: 16,
   },
-  statIconContainer: {
+  statIconBg: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFF',
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 12,
   },
-  projectionCard: {
+  statLabel: {
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  revenueCard: {
+    borderRadius: 16,
+    borderWidth: 1,
     padding: 20,
+    marginTop: 4,
     marginBottom: 24,
   },
-  projectionHeader: {
+  revenueHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  revenueLabel: {
+    fontSize: 13,
+  },
   trendBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   actionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 10,
   },
-  actionIcon: {
-    marginRight: 16,
+  actionIconBg: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
   },
   actionText: {
     flex: 1,
-  }
+  },
+  switchRole: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 16,
+    marginBottom: 16,
+  },
 });
