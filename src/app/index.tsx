@@ -2,9 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Image, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/hooks/useAuthStore';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function SplashScreen() {
   const { isLoggedIn, role } = useAuthStore();
+  const theme = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const taglineAnim = useRef(new Animated.Value(0)).current;
@@ -49,7 +51,7 @@ export default function SplashScreen() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background === '#1E1E24' ? '#1E1E24' : '#FFFFFF' }]}>
       <Animated.View
         style={[
           styles.logoContainer,
@@ -69,13 +71,17 @@ export default function SplashScreen() {
       <Animated.Text
         style={[
           styles.tagline,
-          { opacity: taglineAnim, transform: [{ translateY: taglineAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] },
+          { 
+            opacity: taglineAnim, 
+            color: theme.textSecondary,
+            transform: [{ translateY: taglineAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] 
+          },
         ]}
       >
         Homemade goodness, delivered
       </Animated.Text>
 
-      <Animated.Text style={[styles.version, { opacity: taglineAnim }]}>
+      <Animated.Text style={[styles.version, { opacity: taglineAnim, color: theme.border }]}>
         v1.0.0
       </Animated.Text>
     </View>

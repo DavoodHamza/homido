@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { View, StyleSheet, FlatList, Image, Pressable, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
@@ -6,100 +7,154 @@ import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
 
 const { width } = Dimensions.get('window');
+const COLUMN_WIDTH = (width - 40) / 2;
 
-const FEED_POSTS = [
+const FEED_ITEMS = [
   {
     id: '1',
-    vendorName: 'Sarah\'s Sweet Delights',
+    vendorName: "Sarah's Sweets",
     vendorAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80',
-    location: 'Bandra West, Mumbai',
-    images: ['https://images.unsplash.com/photo-1551024601-bec78aea704b?w=800&q=80'],
+    location: 'Bandra, Mumbai',
+    image: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=800&q=80',
     title: 'Double Chocolate Fudge Cake',
-    description: 'Freshly baked using premium Belgian chocolate. Perfect for birthdays or special occasions! 🍫✨',
+    description: 'Baked using premium Belgian chocolate.',
     price: '₹850',
-    likes: 245,
+    rating: 4.9,
+    category: 'Cakes',
   },
   {
     id: '2',
-    vendorName: 'Gourmet Grill & Roasts',
+    vendorName: 'Gourmet Grill',
     vendorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80',
-    location: 'Hitech City, Hyderabad',
-    images: ['https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=800&q=80'],
+    location: 'Hitech City, Hyd',
+    image: 'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=800&q=80',
     title: 'Special Tandoori Skewers',
-    description: 'Marinated overnight in our secret spice blend and slow-roasted to perfection. Served with mint chutney.',
+    description: 'Marinated overnight in spices.',
     price: '₹280',
-    likes: 182,
-  }
+    rating: 4.7,
+    category: 'Food',
+  },
+  {
+    id: '3',
+    vendorName: "Auntie's Bakes",
+    vendorAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&q=80',
+    location: 'Jubilee Hills, Hyd',
+    image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=800&q=80',
+    title: 'Red Velvet Cupcakes',
+    description: 'Fluffy cupcakes with cream cheese icing.',
+    price: '₹480',
+    rating: 4.8,
+    category: 'Cakes',
+  },
+  {
+    id: '4',
+    vendorName: 'Spicy Treats',
+    vendorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80',
+    location: 'Gachibowli, Hyd',
+    image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&q=80',
+    title: 'Hyderabadi Chicken Biryani',
+    description: 'Rich basmati rice cooked with chicken.',
+    price: '₹350',
+    rating: 4.6,
+    category: 'Food',
+  },
 ];
 
 export default function Feed() {
   const theme = useTheme();
+  const [favorites, setFavorites] = useState<string[]>([]);
 
-  const renderPost = ({ item }: { item: typeof FEED_POSTS[0] }) => (
-    <View style={[styles.postContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
-      {/* Post Header */}
-      <View style={styles.postHeader}>
-        <View style={styles.vendorInfo}>
-          <Image source={{ uri: item.vendorAvatar }} style={styles.avatar} />
-          <View>
-            <ThemedText style={styles.vendorName}>{item.vendorName}</ThemedText>
-            <ThemedText style={{ fontSize: 12, color: theme.textSecondary }}>{item.location}</ThemedText>
+  const toggleFavorite = (id: string) => {
+    setFavorites(prev => 
+      prev.includes(id) ? prev.filter(favId => favId !== id) : [...prev, id]
+    );
+  };
+
+  const renderFeedItem = ({ item }: { item: typeof FEED_ITEMS[0] }) => {
+    const isFav = favorites.includes(item.id);
+    return (
+      <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        {/* Card Image with overlay elements */}
+        <View style={styles.imageContainer}>
+          <Image source={{ uri: item.image }} style={styles.cardImage} />
+          
+          {/* Category Tag */}
+          <View style={[styles.tag, { backgroundColor: theme.primary }]}>
+            <ThemedText style={styles.tagText}>{item.category}</ThemedText>
+          </View>
+
+          {/* Favorite Button */}
+          <Pressable 
+            onPress={() => toggleFavorite(item.id)}
+            style={[styles.favBtn, { backgroundColor: theme.card + 'D0' }]}
+          >
+            <Ionicons 
+              name={isFav ? "heart" : "heart-outline"} 
+              size={18} 
+              color={isFav ? theme.error : theme.text} 
+            />
+          </Pressable>
+
+          {/* Rating Overlay */}
+          <View style={[styles.ratingOverlay, { backgroundColor: theme.card + 'D0' }]}>
+            <Ionicons name="star" size={12} color={theme.accent} />
+            <ThemedText style={styles.ratingText}>{item.rating}</ThemedText>
           </View>
         </View>
-        <Pressable>
-          <Ionicons name="ellipsis-horizontal" size={20} color={theme.textSecondary} />
-        </Pressable>
-      </View>
 
-      {/* Post Image */}
-      <Image source={{ uri: item.images[0] }} style={styles.postImage} />
+        {/* Content Area */}
+        <View style={styles.infoArea}>
+          <ThemedText style={styles.cardTitle} numberOfLines={1}>
+            {item.title}
+          </ThemedText>
+          
+          <ThemedText style={[styles.cardDesc, { color: theme.textSecondary }]} numberOfLines={2}>
+            {item.description}
+          </ThemedText>
 
-      {/* Post Actions */}
-      <View style={styles.postActions}>
-        <View style={styles.actionGroup}>
-          <Pressable style={styles.actionIcon}>
-            <Ionicons name="heart-outline" size={26} color={theme.text} />
-          </Pressable>
-          <Pressable style={styles.actionIcon}>
-            <Ionicons name="chatbubble-outline" size={24} color={theme.text} />
-          </Pressable>
-          <Pressable style={styles.actionIcon}>
-            <Ionicons name="share-outline" size={26} color={theme.text} />
-          </Pressable>
+          {/* Vendor Row */}
+          <View style={styles.vendorRow}>
+            <Image source={{ uri: item.vendorAvatar }} style={styles.vendorAvatar} />
+            <View style={{ flex: 1, marginLeft: 6 }}>
+              <ThemedText style={styles.vendorName} numberOfLines={1}>
+                {item.vendorName}
+              </ThemedText>
+            </View>
+          </View>
+
+          {/* Price and Add button */}
+          <View style={styles.actionRow}>
+            <ThemedText style={[styles.priceText, { color: theme.primary }]}>
+              {item.price}
+            </ThemedText>
+            <Pressable style={[styles.addBtn, { backgroundColor: theme.primary }]}>
+              <Ionicons name="add" size={20} color="#FFFFFF" />
+            </Pressable>
+          </View>
         </View>
-        <Pressable>
-          <Ionicons name="bookmark-outline" size={24} color={theme.text} />
-        </Pressable>
       </View>
-
-      {/* Post Content */}
-      <View style={styles.postContent}>
-        <ThemedText style={{ fontWeight: 'bold', marginBottom: 4 }}>{item.likes} likes</ThemedText>
-        <View style={styles.titleRow}>
-          <ThemedText style={styles.postTitle}>{item.title}</ThemedText>
-          <ThemedText style={styles.postPrice}>{item.price}</ThemedText>
-        </View>
-        <ThemedText style={{ color: theme.textSecondary, lineHeight: 20 }}>
-          <ThemedText style={{ fontWeight: 'bold' }}>{item.vendorName} </ThemedText>
-          {item.description}
-        </ThemedText>
-
-        <Button title="Order Now" size="sm" style={styles.orderButton} />
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       <View style={styles.headerBar}>
-        <ThemedText style={styles.headerTitle}>Feed</ThemedText>
+        <View>
+          <ThemedText style={styles.headerTitle}>Homemade Feed</ThemedText>
+          <ThemedText style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
+            Hot & fresh from local kitchens
+          </ThemedText>
+        </View>
       </View>
+
       <FlatList
-        data={FEED_POSTS}
+        data={FEED_ITEMS}
         keyExtractor={item => item.id}
-        renderItem={renderPost}
+        renderItem={renderFeedItem}
+        numColumns={2}
+        columnWrapperStyle={styles.columnWrapper}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingVertical: 8 }}
+        contentContainerStyle={styles.listContent}
       />
     </SafeAreaView>
   );
@@ -112,79 +167,123 @@ const styles = StyleSheet.create({
   headerBar: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 12,
+    paddingBottom: 16,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
   },
-  postContainer: {
+  headerSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  listContent: {
+    paddingHorizontal: 14,
+    paddingBottom: 40,
+  },
+  columnWrapper: {
+    justifyContent: 'space-between',
     marginBottom: 16,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
   },
-  postHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-  },
-  vendorInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
+  card: {
+    width: COLUMN_WIDTH,
     borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
   },
-  vendorName: {
-    fontWeight: 'bold',
-    fontSize: 14,
+  imageContainer: {
+    width: '100%',
+    height: COLUMN_WIDTH * 1.1,
+    position: 'relative',
   },
-  postImage: {
-    width: width,
-    height: width, // Square images
+  cardImage: {
+    width: '100%',
+    height: '100%',
   },
-  postActions: {
+  tag: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  tagText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  favBtn: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ratingOverlay: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  ratingText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  infoArea: {
     padding: 12,
-    paddingBottom: 8,
   },
-  actionGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  actionIcon: {
-    // padding: 4,
-  },
-  postContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 16,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginTop: 4,
+  cardTitle: {
+    fontWeight: '700',
+    fontSize: 15,
     marginBottom: 4,
   },
-  postTitle: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    flex: 1,
+  cardDesc: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: 10,
   },
-  postPrice: {
-    fontWeight: 'bold',
-    color: '#FF7A00',
-    fontSize: 16,
-    marginLeft: 12,
+  vendorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  orderButton: {
-    marginTop: 12,
-  }
+  vendorAvatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+  },
+  vendorName: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  priceText: {
+    fontWeight: '800',
+    fontSize: 16,
+  },
+  addBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

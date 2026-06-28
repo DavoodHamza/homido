@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "temp_app",
-    "slug": "temp_app",
+    "name": "Homido",
+    "slug": "homido",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
-    "scheme": "tempapp",
+    "scheme": "homido",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
