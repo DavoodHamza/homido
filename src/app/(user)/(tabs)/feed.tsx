@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, Image, Pressable, Dimensions } from 'react-native';
+import { View, StyleSheet, FlatList, Image, Pressable, Dimensions, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
@@ -8,6 +8,12 @@ import { Button } from '@/components/ui/Button';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = (width - 40) / 2;
+
+const FEED_CATEGORIES = [
+  { id: 'All', name: 'All Dishes' },
+  { id: 'Cakes', name: 'Cakes' },
+  { id: 'Food', name: 'Meals' },
+];
 
 const FEED_ITEMS = [
   {
@@ -62,6 +68,7 @@ const FEED_ITEMS = [
 
 export default function Feed() {
   const theme = useTheme();
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [favorites, setFavorites] = useState<string[]>([]);
 
   const toggleFavorite = (id: string) => {
@@ -69,6 +76,10 @@ export default function Feed() {
       prev.includes(id) ? prev.filter(favId => favId !== id) : [...prev, id]
     );
   };
+
+  const filteredItems = FEED_ITEMS.filter(item => 
+    selectedCategory === 'All' || item.category === selectedCategory
+  );
 
   const renderFeedItem = ({ item }: { item: typeof FEED_ITEMS[0] }) => {
     const isFav = favorites.includes(item.id);
@@ -147,8 +158,38 @@ export default function Feed() {
         </View>
       </View>
 
+      {/* Product Filter Chips */}
+      <View style={styles.filterChipsContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
+          {FEED_CATEGORIES.map((cat) => {
+            const isSelected = selectedCategory === cat.id;
+            return (
+              <Pressable
+                key={cat.id}
+                onPress={() => setSelectedCategory(cat.id)}
+                style={[
+                  styles.chip,
+                  isSelected 
+                    ? { backgroundColor: theme.primary, borderColor: theme.primary } 
+                    : { backgroundColor: theme.card, borderColor: theme.border }
+                ]}
+              >
+                <ThemedText 
+                  style={[
+                    styles.chipText, 
+                    { color: isSelected ? '#FFFFFF' : theme.text }
+                  ]}
+                >
+                  {cat.name}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
       <FlatList
-        data={FEED_ITEMS}
+        data={filteredItems}
         keyExtractor={item => item.id}
         renderItem={renderFeedItem}
         numColumns={2}
@@ -167,7 +208,7 @@ const styles = StyleSheet.create({
   headerBar: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 16,
+    paddingBottom: 8,
   },
   headerTitle: {
     fontSize: 28,
@@ -176,6 +217,24 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 13,
     marginTop: 2,
+  },
+  filterChipsContainer: {
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+  },
+  chipsScroll: {
+    flexDirection: 'row',
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginRight: 10,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   listContent: {
     paddingHorizontal: 14,

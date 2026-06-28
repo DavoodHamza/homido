@@ -5,6 +5,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useThemeStore } from '@/hooks/useThemeStore';
+
 const CATEGORIES = [
   { id: 'all', name: 'All Food', icon: '🍽️' },
   { id: 'cakes', name: 'Cakes', icon: '🎂' },
@@ -23,6 +25,7 @@ const FEATURED_VENDORS = [
 
 export default function Home() {
   const theme = useTheme();
+  const { themeMode, toggleTheme } = useThemeStore();
   
   // State for filtering and sorting
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -65,6 +68,13 @@ export default function Home() {
             </View>
           </View>
           <View style={styles.headerActions}>
+            <Pressable onPress={toggleTheme} style={{ padding: 8, marginRight: 4 }}>
+              <Ionicons 
+                name={themeMode === 'dark' ? "sunny" : "moon"} 
+                size={22} 
+                color={theme.text} 
+              />
+            </Pressable>
             <View style={styles.profileButton}>
               <ThemedText style={{ color: '#FFF', fontWeight: 'bold' }}>DK</ThemedText>
             </View>

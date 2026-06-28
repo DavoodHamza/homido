@@ -10,8 +10,10 @@ import { useAuthStore } from '@/hooks/useAuthStore';
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
+import { useThemeStore } from '@/hooks/useThemeStore';
+
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const { themeMode } = useThemeStore();
   const { isLoggedIn, role } = useAuthStore();
 
   useEffect(() => {
@@ -19,7 +21,7 @@ export default function RootLayout() {
     SplashScreen.hideAsync();
   }, []);
 
-  const isDark = colorScheme === 'dark';
+  const isDark = themeMode === 'dark';
 
   return (
     <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
