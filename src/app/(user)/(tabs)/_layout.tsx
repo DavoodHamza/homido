@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
+import { Platform } from 'react-native';
 
 export default function UserTabLayout() {
   const theme = useTheme();
@@ -11,13 +12,17 @@ export default function UserTabLayout() {
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textSecondary,
         tabBarStyle: {
-          backgroundColor: theme.background,
+          backgroundColor: theme.card,
           borderTopColor: theme.border,
+          height: Platform.OS === 'ios' ? 88 : 60,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+          paddingTop: 8,
         },
         headerStyle: {
           backgroundColor: theme.background,
         },
         headerTintColor: theme.text,
+        headerShown: false,
       }}
     >
       <Tabs.Screen
@@ -25,7 +30,6 @@ export default function UserTabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color }) => <Ionicons name="home" size={24} color={color} />,
-          headerShown: false,
         }}
       />
       <Tabs.Screen
@@ -33,7 +37,6 @@ export default function UserTabLayout() {
         options={{
           title: 'Feed',
           tabBarIcon: ({ color }) => <Ionicons name="images" size={24} color={color} />,
-          headerTitle: 'Feed',
         }}
       />
       <Tabs.Screen
@@ -41,7 +44,6 @@ export default function UserTabLayout() {
         options={{
           title: 'Orders',
           tabBarIcon: ({ color }) => <Ionicons name="receipt" size={24} color={color} />,
-          headerTitle: 'My Orders',
         }}
       />
       <Tabs.Screen
@@ -49,7 +51,6 @@ export default function UserTabLayout() {
         options={{
           title: 'Chat',
           tabBarIcon: ({ color }) => <Ionicons name="chatbubbles" size={24} color={color} />,
-          headerTitle: 'Messages',
         }}
       />
       <Tabs.Screen
@@ -57,7 +58,6 @@ export default function UserTabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} />,
-          headerTitle: 'My Profile',
         }}
       />
       <Tabs.Screen
@@ -65,7 +65,6 @@ export default function UserTabLayout() {
         options={{
           title: 'Testing',
           tabBarIcon: ({ color }) => <Ionicons name="bug" size={24} color={color} />,
-          headerTitle: 'Role Testing',
         }}
       />
     </Tabs>

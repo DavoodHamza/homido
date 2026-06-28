@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
 
 export default function SignupScreen() {
   const { login } = useAuthStore();
@@ -71,9 +71,12 @@ export default function SignupScreen() {
 
           <View style={styles.footer}>
             <ThemedText style={{ color: theme.textSecondary }}>Already have an account? </ThemedText>
-            <Link href="/(auth)/login" asChild>
-              <ThemedText style={{ color: theme.primary, fontWeight: 'bold' }}>Login</ThemedText>
-            </Link>
+            <ThemedText
+              onPress={() => router.push('/(auth)/login')}
+              style={{ color: theme.primary, fontWeight: 'bold' }}
+            >
+              Login
+            </ThemedText>
           </View>
         </Card>
       </ScrollView>

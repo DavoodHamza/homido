@@ -1,4 +1,5 @@
 import { View, StyleSheet, FlatList, Image, Pressable, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -89,7 +90,10 @@ export default function Feed() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+      <View style={styles.headerBar}>
+        <ThemedText style={styles.headerTitle}>Feed</ThemedText>
+      </View>
       <FlatList
         data={FEED_POSTS}
         keyExtractor={item => item.id}
@@ -97,13 +101,22 @@ export default function Feed() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingVertical: 8 }}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerBar: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
   },
   postContainer: {
     marginBottom: 16,
