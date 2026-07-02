@@ -1,86 +1,117 @@
-import { View, StyleSheet, FlatList, Pressable } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, FlatList, Pressable, RefreshControl, ActivityIndicator } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card } from '@/components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
-
-const GLOBAL_ORDERS = [
-  {
-    id: 'ORD-8273',
-    vendorName: 'Sarah\'s Sweets',
-    customerName: 'Rahul M.',
-    total: '₹1300',
-    status: 'Pending Vendor',
-    time: '10 mins ago',
-  },
-  {
-    id: 'ORD-8272',
-    vendorName: 'Spicy Treats',
-    customerName: 'Priya K.',
-    total: '₹1200',
-    status: 'In Progress',
-    time: '45 mins ago',
-  },
-  {
-    id: 'ORD-8271',
-    vendorName: 'Home Bakes by Anjali',
-    customerName: 'Amit S.',
-    total: '₹350',
-    status: 'Flagged',
-    time: '3 hours ago',
-  }
-];
+import { api } from '@/services/api';
 
 export default function AdminOrders() {
   const theme = useTheme();
 
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'all'>('active');
+
+  const fetchOrders = async () => {
+    try {
+      const res = await api.orders.get();
+      setOrders(res);
+    } catch (err) {
+      console.error('Failed to fetch global orders:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchOrders();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchOrders();
+  }, []);
+
   const getStatusColor = (status: string) => {
-    switch(status) {
-      case 'Pending Vendor': return theme.accent;
-      case 'In Progress': return theme.primary;
-      case 'Flagged': return theme.error;
+    switch (status) {
+      case 'Pending': return theme.accent;
+      case 'Preparing': return theme.primary;
+      case 'On the Way': return '#34C759';
+      case 'Delivered': return theme.success;
+      case 'Cancelled': return theme.error;
       default: return theme.textSecondary;
     }
   };
 
-  const renderOrder = ({ item }: { item: typeof GLOBAL_ORDERS[0] }) => (
-    <Card style={styles.orderCard}>
-      <View style={styles.orderHeader}>
-        <View>
-          <ThemedText style={{ fontWeight: 'bold' }}>{item.id}</ThemedText>
-          <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>{item.time}</ThemedText>
-        </View>
-        <ThemedText style={{ fontWeight: 'bold', color: theme.text }}>{item.total}</ThemedText>
-      </View>
+  const getFilteredOrders = () => {
+    return orders.filter((order) => {
+      if (activeTab === 'active') {
+        return ['Pending', 'Preparing', 'On the Way'].includes(order.status);
+      }
+      if (activeTab === 'pending') {
+        return order.status === 'Pending';
+      }
+      return true; // All
+    });
+  };
 
-      <View style={styles.orderBody}>
-        <View style={styles.partiesRow}>
-          <View style={styles.partyItem}>
-            <Ionicons name="storefront-outline" size={16} color={theme.textSecondary} style={{ marginRight: 6 }} />
-            <ThemedText style={{ fontSize: 14 }}>{item.vendorName}</ThemedText>
-          </View>
-          <Ionicons name="arrow-forward" size={16} color={theme.border} />
-          <View style={styles.partyItem}>
-            <Ionicons name="person-outline" size={16} color={theme.textSecondary} style={{ marginRight: 6 }} />
-            <ThemedText style={{ fontSize: 14 }}>{item.customerName}</ThemedText>
-          </View>
-        </View>
-      </View>
+  const renderOrder = ({ item }: { item: any }) => {
+    const statusColor = getStatusColor(item.status);
+    const dateFormatted = new Date(item.date).toLocaleDateString([], {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
-      <View style={[styles.orderFooter, { borderTopColor: theme.border }]}>
-        <View style={styles.statusContainer}>
-          <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status) }]} />
-          <ThemedText style={{ fontSize: 14, fontWeight: '600', color: getStatusColor(item.status) }}>
-            {item.status}
-          </ThemedText>
+    return (
+      <Card style={styles.orderCard}>
+        <View style={styles.orderHeader}>
+          <View>
+            <ThemedText style={{ fontWeight: 'bold' }}>ORD-{item.id.substring(0, 8).toUpperCase()}</ThemedText>
+            <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>{dateFormatted}</ThemedText>
+          </View>
+          <ThemedText style={{ fontWeight: 'bold', color: theme.text }}>₹{item.total}</ThemedText>
         </View>
-        <Pressable>
-          <ThemedText style={{ color: theme.primary, fontWeight: '600' }}>View Details</ThemedText>
-        </Pressable>
-      </View>
-    </Card>
-  );
+
+        <View style={styles.orderBody}>
+          <View style={styles.partiesRow}>
+            <View style={styles.partyItem}>
+              <Ionicons name="storefront-outline" size={16} color={theme.textSecondary} style={{ marginRight: 6 }} />
+              <ThemedText style={{ fontSize: 14 }} numberOfLines={1}>
+                {item.vendor?.name || 'Kitchen'}
+              </ThemedText>
+            </View>
+            <Ionicons name="arrow-forward" size={16} color={theme.border} style={{ marginHorizontal: 8 }} />
+            <View style={styles.partyItem}>
+              <Ionicons name="person-outline" size={16} color={theme.textSecondary} style={{ marginRight: 6 }} />
+              <ThemedText style={{ fontSize: 14 }} numberOfLines={1}>
+                {item.user?.name || 'Customer'}
+              </ThemedText>
+            </View>
+          </View>
+        </View>
+
+        <View style={[styles.orderFooter, { borderTopColor: theme.border }]}>
+          <View style={styles.statusContainer}>
+            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+            <ThemedText style={{ fontSize: 14, fontWeight: '600', color: statusColor }}>
+              {item.status}
+            </ThemedText>
+          </View>
+        </View>
+      </Card>
+    );
+  };
+
+  const filtered = getFilteredOrders();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
@@ -88,25 +119,61 @@ export default function AdminOrders() {
         <ThemedText type="title">Global Orders</ThemedText>
         
         <View style={styles.filterTabs}>
-          <Pressable style={[styles.tab, styles.activeTab, { borderBottomColor: theme.primary }]}>
-            <ThemedText style={{ color: theme.primary, fontWeight: 'bold' }}>Active (3)</ThemedText>
+          <Pressable
+            onPress={() => setActiveTab('active')}
+            style={[styles.tab, activeTab === 'active' && [styles.activeTab, { borderBottomColor: theme.primary }]]}
+          >
+            <ThemedText
+              style={activeTab === 'active' ? { color: theme.primary, fontWeight: 'bold' } : { color: theme.textSecondary }}
+            >
+              Active ({orders.filter(o => ['Pending', 'Preparing', 'On the Way'].includes(o.status)).length})
+            </ThemedText>
           </Pressable>
-          <Pressable style={styles.tab}>
-            <ThemedText style={{ color: theme.textSecondary }}>Flagged (1)</ThemedText>
+          <Pressable
+            onPress={() => setActiveTab('pending')}
+            style={[styles.tab, activeTab === 'pending' && [styles.activeTab, { borderBottomColor: theme.primary }]]}
+          >
+            <ThemedText
+              style={activeTab === 'pending' ? { color: theme.primary, fontWeight: 'bold' } : { color: theme.textSecondary }}
+            >
+              Pending ({orders.filter(o => o.status === 'Pending').length})
+            </ThemedText>
           </Pressable>
-          <Pressable style={styles.tab}>
-            <ThemedText style={{ color: theme.textSecondary }}>All</ThemedText>
+          <Pressable
+            onPress={() => setActiveTab('all')}
+            style={[styles.tab, activeTab === 'all' && [styles.activeTab, { borderBottomColor: theme.primary }]]}
+          >
+            <ThemedText
+              style={activeTab === 'all' ? { color: theme.primary, fontWeight: 'bold' } : { color: theme.textSecondary }}
+            >
+              All ({orders.length})
+            </ThemedText>
           </Pressable>
         </View>
       </View>
 
-      <FlatList
-        data={GLOBAL_ORDERS}
-        keyExtractor={item => item.id}
-        renderItem={renderOrder}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+      {loading && orders.length === 0 ? (
+        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 40 }} />
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={item => item.id}
+          renderItem={renderOrder}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.primary]} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="receipt-outline" size={48} color={theme.textSecondary} />
+              <ThemedText style={{ color: theme.textSecondary, marginTop: 12 }}>
+                No {activeTab} orders found.
+              </ThemedText>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -179,5 +246,10 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     marginRight: 8,
-  }
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+  },
 });

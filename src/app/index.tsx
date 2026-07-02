@@ -1,15 +1,14 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet, Image, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function SplashScreen() {
-  const { isLoggedIn, role } = useAuthStore();
   const theme = useTheme();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const taglineAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useMemo(() => new Animated.Value(0), []);
+  const scaleAnim = useMemo(() => new Animated.Value(0.8), []);
+  const taglineAnim = useMemo(() => new Animated.Value(0), []);
 
   useEffect(() => {
     // Animate logo in
@@ -36,11 +35,12 @@ export default function SplashScreen() {
 
     // Navigate after 2.5 seconds
     const timer = setTimeout(() => {
-      if (!isLoggedIn) {
+      const state = useAuthStore.getState();
+      if (!state.isLoggedIn) {
         router.replace('/(auth)/login');
-      } else if (role === 'vendor') {
+      } else if (state.role === 'vendor') {
         router.replace('/(vendor)/(tabs)');
-      } else if (role === 'admin') {
+      } else if (state.role === 'admin') {
         router.replace('/(admin)/(tabs)');
       } else {
         router.replace('/(user)/(tabs)');
@@ -48,10 +48,10 @@ export default function SplashScreen() {
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [fadeAnim, scaleAnim, taglineAnim]);
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background === '#1E1E24' ? '#1E1E24' : '#FFFFFF' }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Animated.View
         style={[
           styles.logoContainer,

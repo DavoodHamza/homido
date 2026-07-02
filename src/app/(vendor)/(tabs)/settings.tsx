@@ -32,7 +32,7 @@ export default function VendorSettings() {
               <ThemedText style={{ color: '#FFF', fontWeight: 'bold', fontSize: 24 }}>S</ThemedText>
             </View>
             <View style={{ marginLeft: 16 }}>
-              <ThemedText type="subtitle">Sarah's Sweets</ThemedText>
+              <ThemedText type="subtitle">Sarah&apos;s Sweets</ThemedText>
               <ThemedText style={{ color: theme.textSecondary }}>sarah@example.com</ThemedText>
             </View>
           </View>
@@ -115,7 +115,13 @@ export default function VendorSettings() {
         <Pressable
           style={[styles.switchRole, { backgroundColor: theme.card, borderColor: theme.border }]}
           onPress={() => {
-            useAuthStore.getState().login('user');
+            const state = useAuthStore.getState();
+            state.login(state.token || '', {
+              id: state.user?.id || '',
+              name: state.user?.name || '',
+              phoneNumber: state.user?.phoneNumber || '',
+              role: 'user'
+            });
             router.replace('/(user)/(tabs)');
           }}
         >

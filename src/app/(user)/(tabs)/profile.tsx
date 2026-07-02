@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, Image, Pressable } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,7 +24,7 @@ const SETTINGS_ITEMS = [
 
 export default function ProfileScreen() {
   const theme = useTheme();
-  const { logout } = useAuthStore();
+  const { logout, user } = useAuthStore();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
@@ -32,11 +32,13 @@ export default function ProfileScreen() {
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={[styles.avatarLarge, { backgroundColor: theme.primary }]}>
-            <ThemedText style={styles.avatarText}>DK</ThemedText>
+            <ThemedText style={styles.avatarText}>
+              {user?.name ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'U'}
+            </ThemedText>
           </View>
           <View style={styles.profileInfo}>
-            <ThemedText style={styles.profileName}>Davood Khan</ThemedText>
-            <ThemedText style={[styles.profilePhone, { color: theme.textSecondary }]}>+91 98765 43210</ThemedText>
+            <ThemedText style={styles.profileName}>{user?.name || 'User'}</ThemedText>
+            <ThemedText style={[styles.profilePhone, { color: theme.textSecondary }]}>{user?.phoneNumber || ''}</ThemedText>
           </View>
           <Pressable style={[styles.editButton, { borderColor: theme.border }]}>
             <Ionicons name="pencil" size={16} color={theme.primary} />

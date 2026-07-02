@@ -3,18 +3,13 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
-
-import { useAuthStore } from '@/hooks/useAuthStore';
+import { useThemeStore } from '@/hooks/useThemeStore';
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
-import { useThemeStore } from '@/hooks/useThemeStore';
-
 export default function RootLayout() {
   const { themeMode } = useThemeStore();
-  const { isLoggedIn, role } = useAuthStore();
 
   useEffect(() => {
     // Hide splash screen after root layout mounts

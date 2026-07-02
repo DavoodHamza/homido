@@ -1,11 +1,14 @@
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 
 import { useThemeStore } from '@/hooks/useThemeStore';
+import { useAuthStore } from '@/hooks/useAuthStore';
+import { api } from '@/services/api';
 
 const CATEGORIES = [
   { id: 'all', name: 'All Food', icon: '🍽️' },
@@ -16,16 +19,10 @@ const CATEGORIES = [
   { id: 'desserts', name: 'Desserts', icon: '🍨' },
 ];
 
-const FEATURED_VENDORS = [
-  { id: '1', name: "Auntie's Best Bakes", rating: 4.8, image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&q=80', time: '15-20 mins', timeVal: 15, category: 'cakes' },
-  { id: '2', name: "Spicy Treats", rating: 4.5, image: 'https://images.unsplash.com/photo-1512152272829-e3139592d56f?w=500&q=80', time: '30-40 mins', timeVal: 30, category: 'meals' },
-  { id: '3', name: "Sarah's Sweet Delights", rating: 4.9, image: 'https://images.unsplash.com/photo-1557925923-33b251d59265?w=500&q=80', time: '20-25 mins', timeVal: 20, category: 'desserts' },
-  { id: '4', name: "Grandma's Pickles", rating: 4.7, image: 'https://images.unsplash.com/photo-1587132137056-bfbf0166836e?w=500&q=80', time: '10-15 mins', timeVal: 10, category: 'pickles' },
-];
-
 export default function Home() {
   const theme = useTheme();
   const { themeMode, toggleTheme } = useThemeStore();
+  const { user, isLoggedIn } = useAuthStore();
 
   // State for filtering and sorting
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -38,19 +35,128 @@ export default function Home() {
   const [tempSortBy, setTempSortBy] = useState<'rating' | 'time'>('rating');
   const [tempMinRating, setTempMinRating] = useState<number>(0);
 
-  // Filter & Sort Logic
-  const filteredVendors = FEATURED_VENDORS.filter(vendor => {
-    const matchesCategory = selectedCategory === 'all' || vendor.category === selectedCategory;
-    const matchesSearch = vendor.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRating = vendor.rating >= minRating;
-    return matchesCategory && matchesSearch && matchesRating;
-  }).sort((a, b) => {
-    if (sortBy === 'rating') {
-      return b.rating - a.rating; // Highest rating first
-    } else {
-      return a.timeVal - b.timeVal; // Fastest delivery first
+  // Dynamic lists from backend
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Selected Vendor Menu Modal
+  const [selectedVendor, setSelectedVendor] = useState<any | null>(null);
+  const [menuModalVisible, setMenuModalVisible] = useState(false);
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [menuLoading, setMenuLoading] = useState(false);
+  const [cart, setCart] = useState<{ [itemId: string]: { item: any; quantity: number } }>({});
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const fetchVendors = async () => {
+        setLoading(true);
+        try {
+          const res = await api.vendors.getAll({
+            category: selectedCategory,
+            search: searchQuery,
+            minRating: minRating > 0 ? minRating : undefined,
+            sortBy: sortBy,
+          });
+          setVendors(res);
+        } catch (err: any) {
+          console.error('Failed to fetch vendors:', err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchVendors();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [selectedCategory, searchQuery, minRating, sortBy]);
+
+  const openVendorMenu = async (vendor: any) => {
+    if (!isLoggedIn) {
+      Alert.alert(
+        'Sign in Required',
+        'Please sign in or create an account to view menus and place orders.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => router.push('/(auth)/login') },
+          { text: 'Sign Up', onPress: () => router.push('/(auth)/signup') },
+        ]
+      );
+      return;
     }
-  });
+    setSelectedVendor(vendor);
+    setCart({});
+    setMenuModalVisible(true);
+    setMenuItems([]);
+    setMenuLoading(true);
+    try {
+      const items = await api.menu.getByVendor(vendor.id);
+      setMenuItems(items);
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Could not load menu items.');
+    } finally {
+      setMenuLoading(false);
+    }
+  };
+
+  const updateCartQuantity = (item: any, delta: number) => {
+    setCart((prev) => {
+      const current = prev[item.id];
+      const newQty = (current?.quantity || 0) + delta;
+
+      if (newQty <= 0) {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      }
+
+      return {
+        ...prev,
+        [item.id]: {
+          item,
+          quantity: newQty,
+        },
+      };
+    });
+  };
+
+  const getCartTotal = () => {
+    return Object.values(cart).reduce((sum, c) => sum + Number(c.item.price) * c.quantity, 0);
+  };
+
+  const handlePlaceOrder = async () => {
+    if (!isLoggedIn) {
+      Alert.alert(
+        'Sign in Required',
+        'You need an account to place orders.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => router.push('/(auth)/login') },
+        ]
+      );
+      return;
+    }
+    if (!selectedVendor) return;
+    const cartItems = Object.values(cart);
+    if (cartItems.length === 0) return;
+
+    setLoading(true);
+    try {
+      const itemsPayload = cartItems.map((c) => ({
+        menuItemId: c.item.id,
+        quantity: c.quantity,
+      }));
+      await api.orders.create(selectedVendor.id, itemsPayload);
+      setMenuModalVisible(false);
+      setCart({});
+      Alert.alert('Success', 'Your order has been placed successfully!', [
+        { text: 'OK', onPress: () => router.replace('/(user)/(tabs)/orders') },
+      ]);
+    } catch (err: any) {
+      Alert.alert('Checkout Failed', err.message || 'Could not place order.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openFilterModal = () => {
     setTempSortBy(sortBy);
@@ -67,26 +173,25 @@ export default function Home() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-
         {/* Header - Location */}
         <View style={styles.header}>
           <View style={styles.locationContainer}>
             <Ionicons name="location" size={24} color={theme.primary} />
             <View style={{ marginLeft: 8 }}>
               <ThemedText style={styles.locationTitle}>Home</ThemedText>
-              <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }}>Signature Towers, Hitech City</ThemedText>
+              <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }}>
+                {user?.address || 'Signature Towers, Hitech City'}
+              </ThemedText>
             </View>
           </View>
           <View style={styles.headerActions}>
             <Pressable onPress={toggleTheme} style={{ padding: 8, marginRight: 4 }}>
-              <Ionicons
-                name={themeMode === 'dark' ? "sunny" : "moon"}
-                size={22}
-                color={theme.text}
-              />
+              <Ionicons name={themeMode === 'dark' ? 'sunny' : 'moon'} size={22} color={theme.text} />
             </Pressable>
             <View style={styles.profileButton}>
-              <ThemedText style={{ color: '#FFF', fontWeight: 'bold' }}>DK</ThemedText>
+              <ThemedText style={{ color: '#FFF', fontWeight: 'bold' }}>
+                {user?.name ? user.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase() : 'DK'}
+              </ThemedText>
             </View>
           </View>
         </View>
@@ -108,15 +213,12 @@ export default function Home() {
               </Pressable>
             )}
           </View>
-          <Pressable
-            onPress={openFilterModal}
-            style={[styles.filterButton, { backgroundColor: theme.primary }]}
-          >
+          <Pressable onPress={openFilterModal} style={[styles.filterButton, { backgroundColor: theme.primary }]}>
             <Ionicons name="options-outline" size={20} color="#FFF" />
           </Pressable>
         </View>
 
-        {/* Categories (Food Items Only) */}
+        {/* Categories */}
         <View style={styles.section}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>Quick Categories</ThemedText>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
@@ -130,11 +232,17 @@ export default function Home() {
                     styles.categoryItem,
                     isSelected
                       ? { borderColor: theme.primary, borderWidth: 2, backgroundColor: theme.card }
-                      : { borderColor: theme.border, borderWidth: 1, backgroundColor: theme.card }
+                      : { borderColor: theme.border, borderWidth: 1, backgroundColor: theme.card },
                   ]}
                 >
                   <ThemedText style={{ fontSize: 24, marginBottom: 4 }}>{cat.icon}</ThemedText>
-                  <ThemedText style={{ fontSize: 12, color: isSelected ? theme.primary : theme.text, fontWeight: isSelected ? '600' : '400' }}>
+                  <ThemedText
+                    style={{
+                      fontSize: 12,
+                      color: isSelected ? theme.primary : theme.text,
+                      fontWeight: isSelected ? '600' : '400',
+                    }}
+                  >
                     {cat.name}
                   </ThemedText>
                 </Pressable>
@@ -146,38 +254,59 @@ export default function Home() {
         {/* Vendor of the Month Banner */}
         <View style={[styles.promoBanner, { backgroundColor: theme.card }]}>
           <View style={{ flex: 1 }}>
-            <ThemedText style={{ color: theme.accent, fontWeight: 'bold', marginBottom: 4 }}>VENDOR OF THE MONTH</ThemedText>
-            <ThemedText type="subtitle" style={{ fontSize: 20 }}>Sarah's Sweet Delights</ThemedText>
-            <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginTop: 4 }}>Award winning custom cakes</ThemedText>
+            <ThemedText style={{ color: theme.accent, fontWeight: 'bold', marginBottom: 4 }}>
+              VENDOR OF THE MONTH
+            </ThemedText>
+            <ThemedText type="subtitle" style={{ fontSize: 20 }}>Sarah&apos;s Sweet Delights</ThemedText>
+            <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginTop: 4 }}>
+              Award winning custom cakes
+            </ThemedText>
           </View>
-          <Image source={{ uri: 'https://images.unsplash.com/photo-1557925923-33b251d59265?w=200&q=80' }} style={styles.promoImage} />
+          <Image
+            source={{ uri: 'https://images.unsplash.com/photo-1557925923-33b251d59265?w=200&q=80' }}
+            style={styles.promoImage}
+          />
         </View>
 
-        {/* Popular Near You (Filtered & Sorted List) */}
+        {/* Popular Near You */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>Popular Near You</ThemedText>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>Kitchens Near You</ThemedText>
             <ThemedText style={{ color: theme.primary, fontWeight: '600' }}>
               Sort: {sortBy === 'rating' ? 'Rating' : 'Delivery Time'}
             </ThemedText>
           </View>
 
-          {filteredVendors.length > 0 ? (
-            filteredVendors.map(vendor => (
-              <View key={vendor.id} style={[styles.vendorCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <Image source={{ uri: vendor.image }} style={styles.vendorImage} />
+          {loading ? (
+            <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
+          ) : vendors.length > 0 ? (
+            vendors.map((vendor) => (
+              <Pressable
+                key={vendor.id}
+                onPress={() => openVendorMenu(vendor)}
+                style={[styles.vendorCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+              >
+                <Image source={{ uri: vendor.image || 'https://images.unsplash.com/photo-1512152272829-e3139592d56f?w=500&q=80' }} style={styles.vendorImage} />
                 <View style={styles.vendorInfo}>
                   <ThemedText style={{ fontWeight: 'bold', fontSize: 18 }}>{vendor.name}</ThemedText>
                   <View style={styles.ratingBadge}>
                     <Ionicons name="star" size={14} color={theme.accent} />
-                    <ThemedText style={{ fontSize: 12, marginLeft: 4, fontWeight: '600' }}>{vendor.rating}</ThemedText>
+                    <ThemedText style={{ fontSize: 12, marginLeft: 4, fontWeight: '600' }}>
+                      {Number(vendor.rating).toFixed(1)}
+                    </ThemedText>
                   </View>
                 </View>
                 <View style={styles.vendorMeta}>
                   <Ionicons name="time-outline" size={14} color={theme.textSecondary} />
-                  <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginLeft: 4 }}>{vendor.time}</ThemedText>
+                  <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginLeft: 4 }}>
+                    {vendor.timeVal} mins
+                  </ThemedText>
+                  <View style={{ flex: 1 }} />
+                  <ThemedText style={{ fontSize: 12, color: theme.primary, fontWeight: '700' }}>
+                    View Menu
+                  </ThemedText>
                 </View>
-              </View>
+              </Pressable>
             ))
           ) : (
             <View style={styles.emptyContainer}>
@@ -188,7 +317,6 @@ export default function Home() {
             </View>
           )}
         </View>
-
       </ScrollView>
 
       {/* Modern Bottom Filter Modal */}
@@ -198,14 +326,8 @@ export default function Home() {
         visible={filterModalVisible}
         onRequestClose={() => setFilterModalVisible(false)}
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setFilterModalVisible(false)}
-        >
-          <Pressable
-            style={[styles.modalContainer, { backgroundColor: theme.card }]}
-            onPress={(e) => e.stopPropagation()} // Prevent closing on content tap
-          >
+        <Pressable style={styles.modalOverlay} onPress={() => setFilterModalVisible(false)}>
+          <Pressable style={[styles.modalContainer, { backgroundColor: theme.card }]} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
               <ThemedText style={styles.modalTitle}>Filters & Sort</ThemedText>
               <Pressable onPress={() => setFilterModalVisible(false)}>
@@ -222,14 +344,17 @@ export default function Home() {
                   style={[
                     styles.modalOption,
                     { borderColor: theme.border },
-                    tempSortBy === 'rating' && [styles.modalOptionActive, { backgroundColor: theme.primary, borderColor: theme.primary }]
+                    tempSortBy === 'rating' && [
+                      styles.modalOptionActive,
+                      { backgroundColor: theme.primary, borderColor: theme.primary },
+                    ],
                   ]}
                 >
                   <ThemedText
                     style={[
                       styles.modalOptionText,
                       { color: theme.text },
-                      tempSortBy === 'rating' && styles.modalOptionActiveText
+                      tempSortBy === 'rating' && styles.modalOptionActiveText,
                     ]}
                   >
                     Top Rated ⭐️
@@ -240,14 +365,17 @@ export default function Home() {
                   style={[
                     styles.modalOption,
                     { borderColor: theme.border },
-                    tempSortBy === 'time' && [styles.modalOptionActive, { backgroundColor: theme.primary, borderColor: theme.primary }]
+                    tempSortBy === 'time' && [
+                      styles.modalOptionActive,
+                      { backgroundColor: theme.primary, borderColor: theme.primary },
+                    ],
                   ]}
                 >
                   <ThemedText
                     style={[
                       styles.modalOptionText,
                       { color: theme.text },
-                      tempSortBy === 'time' && styles.modalOptionActiveText
+                      tempSortBy === 'time' && styles.modalOptionActiveText,
                     ]}
                   >
                     Fastest Delivery 🕒
@@ -267,17 +395,20 @@ export default function Home() {
                     style={[
                       styles.modalOption,
                       { borderColor: theme.border },
-                      tempMinRating === ratingVal && [styles.modalOptionActive, { backgroundColor: theme.primary, borderColor: theme.primary }]
+                      tempMinRating === ratingVal && [
+                        styles.modalOptionActive,
+                        { backgroundColor: theme.primary, borderColor: theme.primary },
+                      ],
                     ]}
                   >
                     <ThemedText
                       style={[
                         styles.modalOptionText,
                         { color: theme.text },
-                        tempMinRating === ratingVal && styles.modalOptionActiveText
+                        tempMinRating === ratingVal && styles.modalOptionActiveText,
                       ]}
                     >
-                      {ratingVal === 0 ? "Show All" : `${ratingVal}⭐️ +`}
+                      {ratingVal === 0 ? 'Show All' : `${ratingVal}⭐️ +`}
                     </ThemedText>
                   </Pressable>
                 ))}
@@ -302,7 +433,117 @@ export default function Home() {
                 <ThemedText style={styles.modalApplyBtnText}>Apply</ThemedText>
               </Pressable>
             </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
+      {/* Menu / Checkout Drawer Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={menuModalVisible}
+        onRequestClose={() => setMenuModalVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setMenuModalVisible(false)}>
+          <Pressable style={[styles.menuModalContainer, { backgroundColor: theme.card }]} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <View>
+                <ThemedText style={styles.modalTitle}>{selectedVendor?.name}</ThemedText>
+                <ThemedText style={{ color: theme.textSecondary, fontSize: 13, marginTop: 4 }}>
+                  {selectedVendor?.category.toUpperCase()} • ⭐️ {Number(selectedVendor?.rating).toFixed(1)}
+                </ThemedText>
+              </View>
+              <Pressable onPress={() => setMenuModalVisible(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+
+            {menuLoading ? (
+              <ActivityIndicator size="large" color={theme.primary} style={{ marginVertical: 40 }} />
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
+                {menuItems.length > 0 ? (
+                  menuItems.map((item) => {
+                    const quantity = cart[item.id]?.quantity || 0;
+                    return (
+                      <View key={item.id} style={[styles.menuItemRow, { borderBottomColor: theme.border }]}>
+                        {item.image && <Image source={{ uri: item.image }} style={styles.menuItemImage} />}
+                        <View style={{ flex: 1, marginLeft: item.image ? 12 : 0 }}>
+                          <ThemedText style={{ fontWeight: '700', fontSize: 15 }}>{item.name}</ThemedText>
+                          {item.description && (
+                            <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                              {item.description}
+                            </ThemedText>
+                          )}
+                          <ThemedText style={{ color: theme.primary, fontWeight: '700', marginTop: 4 }}>
+                            ₹{item.price}
+                          </ThemedText>
+                        </View>
+
+                        {/* Quantity Controls */}
+                        <View style={styles.quantityControls}>
+                          {quantity > 0 ? (
+                            <>
+                              <Pressable
+                                onPress={() => updateCartQuantity(item, -1)}
+                                style={[styles.qtyBtn, { backgroundColor: theme.border }]}
+                              >
+                                <Ionicons name="remove" size={16} color={theme.text} />
+                              </Pressable>
+                              <ThemedText style={{ marginHorizontal: 12, fontWeight: 'bold' }}>{quantity}</ThemedText>
+                              <Pressable
+                                onPress={() => updateCartQuantity(item, 1)}
+                                style={[styles.qtyBtn, { backgroundColor: theme.primary }]}
+                              >
+                                <Ionicons name="add" size={16} color="#FFF" />
+                              </Pressable>
+                            </>
+                          ) : (
+                            <Pressable
+                              onPress={() => updateCartQuantity(item, 1)}
+                              style={[styles.addBtn, { borderColor: theme.primary }]}
+                            >
+                              <ThemedText style={{ color: theme.primary, fontWeight: '700', fontSize: 13 }}>
+                                ADD
+                              </ThemedText>
+                            </Pressable>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })
+                ) : (
+                  <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                    <Ionicons name="fast-food-outline" size={40} color={theme.textSecondary} />
+                    <ThemedText style={{ color: theme.textSecondary, marginTop: 10 }}>
+                      No menu items listed yet.
+                    </ThemedText>
+                  </View>
+                )}
+              </ScrollView>
+            )}
+
+            {/* Cart checkout footer */}
+            {Object.keys(cart).length > 0 && (
+              <View style={[styles.cartSummary, { borderTopColor: theme.border }]}>
+                <View>
+                  <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }}>Total Price</ThemedText>
+                  <ThemedText style={{ fontSize: 20, fontWeight: '800', color: theme.text }}>
+                    ₹{getCartTotal()}
+                  </ThemedText>
+                </View>
+                <Pressable
+                  onPress={handlePlaceOrder}
+                  style={[styles.placeOrderBtn, { backgroundColor: theme.primary }]}
+                  disabled={loading}
+                >
+                  <ThemedText style={{ color: '#FFF', fontWeight: 'bold', fontSize: 15 }}>
+                    {loading ? 'Placing Order...' : 'Place Order'}
+                  </ThemedText>
+                  <Ionicons name="arrow-forward" size={18} color="#FFF" style={{ marginLeft: 8 }} />
+                </Pressable>
+              </View>
+            )}
           </Pressable>
         </Pressable>
       </Modal>
@@ -443,7 +684,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 40,
   },
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -511,5 +751,59 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
   },
+  // Menu Modal Styles
+  menuModalContainer: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 34,
+    minHeight: 300,
+  },
+  closeBtn: {
+    padding: 4,
+  },
+  menuItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  menuItemImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 10,
+  },
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  qtyBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtn: {
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  cartSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    paddingTop: 16,
+    marginTop: 16,
+  },
+  placeOrderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    height: 50,
+    borderRadius: 12,
+  },
 });
-

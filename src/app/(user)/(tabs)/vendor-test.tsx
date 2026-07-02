@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { useAuthStore } from '@/hooks/useAuthStore';
-import { Button } from '@/components/ui/Button';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { router } from 'expo-router';
@@ -30,7 +29,13 @@ export default function VendorTestScreen() {
 
         <Pressable
           onPress={() => {
-            login('vendor');
+            const state = useAuthStore.getState();
+            login(state.token || '', {
+              id: state.user?.id || '',
+              name: state.user?.name || '',
+              phoneNumber: state.user?.phoneNumber || '',
+              role: 'vendor'
+            });
             router.replace('/(vendor)/(tabs)');
           }}
           style={[styles.roleCard, { backgroundColor: theme.card, borderColor: theme.border }]}
@@ -49,7 +54,13 @@ export default function VendorTestScreen() {
 
         <Pressable
           onPress={() => {
-            login('admin');
+            const state = useAuthStore.getState();
+            login(state.token || '', {
+              id: state.user?.id || '',
+              name: state.user?.name || '',
+              phoneNumber: state.user?.phoneNumber || '',
+              role: 'admin'
+            });
             router.replace('/(admin)/(tabs)');
           }}
           style={[styles.roleCard, { backgroundColor: theme.card, borderColor: theme.border }]}

@@ -1,27 +1,76 @@
-import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card } from '@/components/ui/Card';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import { router } from 'expo-router';
+import { api } from '@/services/api';
 
 export default function AdminDashboard() {
   const theme = useTheme();
   const { logout } = useAuthStore();
+
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadData = async () => {
+    try {
+      const v = await api.vendors.getAdminAll();
+      setVendors(v);
+      const o = await api.orders.get();
+      setOrders(o);
+    } catch (err) {
+      console.error('Failed to load admin stats:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadData();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const getPendingApprovalsCount = () => {
+    return vendors.filter((v) => v.status === 'pending').length;
+  };
+
+  const getPlatformRevenue = () => {
+    return orders
+      .filter((o) => o.status === 'Delivered')
+      .reduce((sum, o) => sum + Number(o.total), 0);
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+        <ActivityIndicator size="large" color={theme.primary} style={{ flex: 1 }} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         
         <View style={styles.header}>
-          <ThemedText type="title">Admin Overview</ThemedText>
+          <View>
+            <ThemedText type="title">Admin Overview</ThemedText>
+            <Pressable onPress={loadData} style={{ marginTop: 4 }}>
+              <ThemedText style={{ color: theme.primary, fontSize: 13, fontWeight: '600' }}>Tap to Refresh</ThemedText>
+            </Pressable>
+          </View>
           <Pressable
             onPress={() => {
               logout();
               router.replace('/(auth)/login');
             }}
+            style={{ padding: 8 }}
           >
             <Ionicons name="log-out-outline" size={24} color={theme.error} />
           </Pressable>
@@ -33,8 +82,8 @@ export default function AdminDashboard() {
             <View style={[styles.statIconBg, { backgroundColor: theme.primary + '15' }]}>
               <Ionicons name="people" size={22} color={theme.primary} />
             </View>
-            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>Total Users</ThemedText>
-            <ThemedText type="stat" style={{ color: theme.text }}>1,420</ThemedText>
+            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>Total Accounts</ThemedText>
+            <ThemedText type="stat" style={{ color: theme.text }}>{vendors.length + 5}</ThemedText>
           </View>
           
           <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -42,7 +91,7 @@ export default function AdminDashboard() {
               <Ionicons name="storefront" size={22} color={theme.accent} />
             </View>
             <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>Total Vendors</ThemedText>
-            <ThemedText type="stat" style={{ color: theme.text }}>85</ThemedText>
+            <ThemedText type="stat" style={{ color: theme.text }}>{vendors.length}</ThemedText>
           </View>
         </View>
 
@@ -52,15 +101,15 @@ export default function AdminDashboard() {
               <Ionicons name="receipt" size={22} color={theme.success} />
             </View>
             <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>Total Orders</ThemedText>
-            <ThemedText type="stat" style={{ color: theme.text }}>3,245</ThemedText>
+            <ThemedText type="stat" style={{ color: theme.text }}>{orders.length}</ThemedText>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={[styles.statIconBg, { backgroundColor: theme.error + '15' }]}>
               <Ionicons name="alert-circle" size={22} color={theme.error} />
             </View>
-            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>Pending</ThemedText>
-            <ThemedText type="stat" style={{ color: theme.text }}>15</ThemedText>
+            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>Pending Approvals</ThemedText>
+            <ThemedText type="stat" style={{ color: theme.text }}>{getPendingApprovalsCount()}</ThemedText>
           </View>
         </View>
 
@@ -68,12 +117,12 @@ export default function AdminDashboard() {
         <View style={[styles.revenueCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.revenueHeader}>
             <View>
-              <ThemedText style={[styles.revenueLabel, { color: theme.textSecondary }]}>Platform Revenue (30 days)</ThemedText>
-              <ThemedText type="bigStat" style={{ marginTop: 4 }}>₹45,200</ThemedText>
+              <ThemedText style={[styles.revenueLabel, { color: theme.textSecondary }]}>Total Platform Gross Revenue</ThemedText>
+              <ThemedText type="bigStat" style={{ marginTop: 4 }}>₹{getPlatformRevenue()}</ThemedText>
             </View>
             <View style={[styles.trendBadge, { backgroundColor: theme.success + '20' }]}>
               <Ionicons name="trending-up" size={16} color={theme.success} />
-              <ThemedText style={{ color: theme.success, fontWeight: '700', marginLeft: 4, fontSize: 13 }}>+8%</ThemedText>
+              <ThemedText style={{ color: theme.success, fontWeight: '700', marginLeft: 4, fontSize: 13 }}>Live</ThemedText>
             </View>
           </View>
         </View>
@@ -82,35 +131,34 @@ export default function AdminDashboard() {
         <View style={styles.section}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>Action Required</ThemedText>
           
-          <Pressable style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Pressable 
+            style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onPress={() => router.push('/(admin)/(tabs)/vendors')}
+          >
             <View style={[styles.actionIconBg, { backgroundColor: theme.error + '15' }]}>
               <Ionicons name="alert-circle" size={22} color={theme.error} />
             </View>
             <View style={styles.actionText}>
-              <ThemedText style={{ fontWeight: '600', fontSize: 15 }}>3 Vendors Awaiting Approval</ThemedText>
-              <ThemedText style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>Review new vendor applications</ThemedText>
+              <ThemedText style={{ fontWeight: '600', fontSize: 15 }}>
+                {getPendingApprovalsCount()} Vendors Awaiting Approval
+              </ThemedText>
+              <ThemedText style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>Review new kitchen profiles</ThemedText>
             </View>
             <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
           </Pressable>
 
-          <Pressable style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Pressable 
+            style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onPress={() => router.push('/(admin)/(tabs)/orders')}
+          >
             <View style={[styles.actionIconBg, { backgroundColor: theme.accent + '15' }]}>
               <Ionicons name="warning" size={22} color={theme.accent} />
             </View>
             <View style={styles.actionText}>
-              <ThemedText style={{ fontWeight: '600', fontSize: 15 }}>12 Flagged Orders</ThemedText>
-              <ThemedText style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>Orders taking too long to accept</ThemedText>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-          </Pressable>
-
-          <Pressable style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={[styles.actionIconBg, { backgroundColor: theme.primary + '15' }]}>
-              <Ionicons name="chatbubbles" size={22} color={theme.primary} />
-            </View>
-            <View style={styles.actionText}>
-              <ThemedText style={{ fontWeight: '600', fontSize: 15 }}>5 Support Tickets</ThemedText>
-              <ThemedText style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>Unresolved customer issues</ThemedText>
+              <ThemedText style={{ fontWeight: '600', fontSize: 15 }}>
+                {orders.filter(o => o.status === 'Pending').length} Pending Orders
+              </ThemedText>
+              <ThemedText style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>Monitor kitchen response times</ThemedText>
             </View>
             <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
           </Pressable>
@@ -120,7 +168,13 @@ export default function AdminDashboard() {
         <Pressable
           style={[styles.switchRole, { backgroundColor: theme.card, borderColor: theme.border }]}
           onPress={() => {
-            useAuthStore.getState().login('user');
+            const state = useAuthStore.getState();
+            state.login(state.token || '', {
+              id: state.user?.id || '',
+              name: state.user?.name || '',
+              phoneNumber: state.user?.phoneNumber || '',
+              role: 'user'
+            });
             router.replace('/(user)/(tabs)');
           }}
         >

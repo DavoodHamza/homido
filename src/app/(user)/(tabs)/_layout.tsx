@@ -63,8 +63,7 @@ export default function UserTabLayout() {
       <Tabs.Screen
         name="vendor-test"
         options={{
-          title: 'Testing',
-          tabBarIcon: ({ color }) => <Ionicons name="bug" size={24} color={color} />,
+          href: null, // hidden from tab bar
         }}
       />
     </Tabs>

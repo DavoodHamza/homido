@@ -1,97 +1,150 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, Image, Pressable, TextInput } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, FlatList, Pressable, TextInput, Modal, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const CONVERSATIONS = [
-  {
-    id: '1',
-    name: "Sarah's Sweet Delights",
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80',
-    lastMessage: 'Your cake will be ready by 4 PM! 🎂',
-    time: '2m ago',
-    unread: 2,
-    online: true,
-  },
-  {
-    id: '2',
-    name: 'Gourmet Grill & Roasts',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80',
-    lastMessage: 'Thank you for your order! We are preparing it now.',
-    time: '15m ago',
-    unread: 0,
-    online: true,
-  },
-  {
-    id: '3',
-    name: "Auntie's Best Bakes",
-    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&q=80',
-    lastMessage: 'We have a new special this week - vanilla bean macarons!',
-    time: '1h ago',
-    unread: 1,
-    online: false,
-  },
-  {
-    id: '4',
-    name: 'Spicy Treats',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80',
-    lastMessage: 'How did you like the biryani? Please leave a review 😊',
-    time: '3h ago',
-    unread: 0,
-    online: false,
-  },
-  {
-    id: '5',
-    name: 'Craft Corner by Priya',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80',
-    lastMessage: 'Your handmade candle set has been shipped!',
-    time: 'Yesterday',
-    unread: 0,
-    online: false,
-  },
-];
+import { api } from '@/services/api';
+import { useAuthStore } from '@/hooks/useAuthStore';
 
 export default function ChatScreen() {
   const theme = useTheme();
+  const { user } = useAuthStore();
+  
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
 
-  const renderConversation = ({ item }: { item: typeof CONVERSATIONS[0] }) => (
-    <Pressable style={[styles.conversationCard, { borderBottomColor: theme.border }]}>
-      <View style={styles.avatarContainer}>
-        <Image source={{ uri: item.avatar }} style={styles.avatar} />
-        {item.online && <View style={[styles.onlineDot, { borderColor: theme.background }]} />}
-      </View>
-      <View style={styles.messageContent}>
-        <View style={styles.messageTop}>
-          <ThemedText style={[styles.senderName, item.unread > 0 && { fontWeight: '800' }]}>{item.name}</ThemedText>
-          <ThemedText style={[styles.timeText, { color: item.unread > 0 ? theme.primary : theme.textSecondary }]}>{item.time}</ThemedText>
+  // Active Chat Modal
+  const [selectedPartner, setSelectedPartner] = useState<any | null>(null);
+  const [chatModalVisible, setChatModalVisible] = useState(false);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [newMessage, setNewMessage] = useState('');
+  
+  const messageScrollRef = useRef<ScrollView>(null);
+
+  const fetchConversations = async () => {
+    try {
+      const res = await api.chat.getConversations();
+      setConversations(res);
+    } catch (err) {
+      console.error('Failed to load conversations:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchConversations();
+    }, 0);
+    
+    // Set up auto-poll for recent messages every 5 seconds when chat list is open
+    const interval = setInterval(fetchConversations, 5000);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const openConversation = async (partner: any) => {
+    setSelectedPartner(partner);
+    setChatModalVisible(true);
+    setMessages([]);
+    setNewMessage('');
+    setMessagesLoading(true);
+    
+    try {
+      const msgs = await api.chat.getConversation(partner.id);
+      setMessages(msgs);
+      setTimeout(() => messageScrollRef.current?.scrollToEnd({ animated: false }), 100);
+    } catch (err) {
+      console.error('Failed to load messages:', err);
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
+
+  // Poll conversation history when details modal is open
+  useEffect(() => {
+    if (!chatModalVisible || !selectedPartner) return;
+    
+    const pollMessages = async () => {
+      try {
+        const msgs = await api.chat.getConversation(selectedPartner.id);
+        setMessages(msgs);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    const msgInterval = setInterval(pollMessages, 3000);
+    return () => clearInterval(msgInterval);
+  }, [chatModalVisible, selectedPartner]);
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !selectedPartner) return;
+    
+    const textToSend = newMessage.trim();
+    setNewMessage('');
+
+    try {
+      const sentMsg = await api.chat.sendMessage(selectedPartner.id, textToSend);
+      setMessages(prev => [...prev, sentMsg]);
+      setTimeout(() => messageScrollRef.current?.scrollToEnd({ animated: true }), 100);
+      fetchConversations();
+    } catch (err) {
+      console.error('Failed to send message:', err);
+    }
+  };
+
+  const getFilteredConversations = () => {
+    return conversations.filter(c => 
+      c.otherUser?.name.toLowerCase().includes(search.toLowerCase())
+    );
+  };
+
+  const renderConversation = ({ item }: { item: any }) => {
+    const timeFormatted = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const isVendor = item.otherUser?.role === 'vendor';
+
+    return (
+      <Pressable 
+        onPress={() => openConversation(item.otherUser)}
+        style={[styles.conversationCard, { borderBottomColor: theme.border }]}
+      >
+        <View style={styles.avatarContainer}>
+          <View style={[styles.avatar, { backgroundColor: isVendor ? theme.primary + '15' : theme.textSecondary + '15' }]}>
+            <ThemedText style={[styles.avatarText, { color: isVendor ? theme.primary : theme.text }]}>
+              {item.otherUser?.name.charAt(0).toUpperCase()}
+            </ThemedText>
+          </View>
         </View>
-        <View style={styles.messageBottom}>
-          <ThemedText
-            numberOfLines={1}
-            style={[styles.lastMessage, { color: item.unread > 0 ? theme.text : theme.textSecondary }]}
-          >
-            {item.lastMessage}
-          </ThemedText>
-          {item.unread > 0 && (
-            <View style={[styles.unreadBadge, { backgroundColor: theme.primary }]}>
-              <ThemedText style={styles.unreadText}>{item.unread}</ThemedText>
-            </View>
-          )}
+        <View style={styles.messageContent}>
+          <View style={styles.messageTop}>
+            <ThemedText style={styles.senderName}>{item.otherUser?.name}</ThemedText>
+            <ThemedText style={[styles.timeText, { color: theme.textSecondary }]}>{timeFormatted}</ThemedText>
+          </View>
+          <View style={styles.messageBottom}>
+            <ThemedText
+              numberOfLines={1}
+              style={[styles.lastMessage, { color: theme.textSecondary }]}
+            >
+              {item.lastMessage}
+            </ThemedText>
+          </View>
         </View>
-      </View>
-    </Pressable>
-  );
+      </Pressable>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       <View style={styles.headerBar}>
         <ThemedText style={styles.headerTitle}>Messages</ThemedText>
-        <Pressable>
-          <Ionicons name="create-outline" size={24} color={theme.primary} />
-        </Pressable>
       </View>
 
       <View style={styles.searchContainer}>
@@ -107,12 +160,108 @@ export default function ChatScreen() {
         </View>
       </View>
 
-      <FlatList
-        data={CONVERSATIONS}
-        keyExtractor={item => item.id}
-        renderItem={renderConversation}
-        showsVerticalScrollIndicator={false}
-      />
+      {loading ? (
+        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 40 }} />
+      ) : (
+        <FlatList
+          data={getFilteredConversations()}
+          keyExtractor={item => item.otherUser?.id}
+          renderItem={renderConversation}
+          showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={fetchConversations}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="chatbubble-ellipses-outline" size={48} color={theme.textSecondary} />
+              <ThemedText style={{ color: theme.textSecondary, marginTop: 12 }}>
+                No active conversations yet.
+              </ThemedText>
+            </View>
+          }
+        />
+      )}
+
+      {/* Chat Details Modal */}
+      <Modal
+        animationType="slide"
+        visible={chatModalVisible}
+        onRequestClose={() => setChatModalVisible(false)}
+      >
+        <SafeAreaView style={[styles.modalWrapper, { backgroundColor: theme.background }]}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
+          >
+            {/* Modal Header */}
+            <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
+              <Pressable onPress={() => setChatModalVisible(false)} style={styles.backBtn}>
+                <Ionicons name="chevron-back" size={24} color={theme.primary} />
+              </Pressable>
+              <ThemedText style={styles.modalHeaderTitle}>{selectedPartner?.name}</ThemedText>
+              <View style={{ width: 40 }} />
+            </View>
+
+            {/* Chat Body */}
+            {messagesLoading ? (
+              <ActivityIndicator size="large" color={theme.primary} style={{ flex: 1 }} />
+            ) : (
+              <ScrollView
+                ref={messageScrollRef}
+                contentContainerStyle={styles.messagesContainer}
+                onContentSizeChange={() => messageScrollRef.current?.scrollToEnd({ animated: true })}
+              >
+                {messages.map((msg) => {
+                  const isOwn = msg.senderId === user?.id;
+                  return (
+                    <View
+                      key={msg.id}
+                      style={[
+                        styles.msgRow,
+                        isOwn ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' }
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.msgBubble,
+                          isOwn 
+                            ? { backgroundColor: theme.primary, borderBottomRightRadius: 2 } 
+                            : { backgroundColor: theme.card, borderBottomLeftRadius: 2, borderColor: theme.border, borderWidth: 0.5 }
+                        ]}
+                      >
+                        <ThemedText style={[styles.msgText, isOwn ? { color: '#FFF' } : { color: theme.text }]}>
+                          {msg.message}
+                        </ThemedText>
+                        <ThemedText style={[styles.msgTime, isOwn ? { color: '#FFF8' } : { color: theme.textSecondary }]}>
+                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </ThemedText>
+                      </View>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            )}
+
+            {/* Input Footer */}
+            <View style={[styles.inputFooter, { borderTopColor: theme.border, backgroundColor: theme.card }]}>
+              <TextInput
+                placeholder="Type a message..."
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.inputField, { color: theme.text, borderColor: theme.border }]}
+                value={newMessage}
+                onChangeText={setNewMessage}
+                multiline
+              />
+              <Pressable
+                onPress={handleSendMessage}
+                disabled={!newMessage.trim()}
+                style={[styles.sendBtn, { backgroundColor: newMessage.trim() ? theme.primary : theme.border }]}
+              >
+                <Ionicons name="send" size={16} color="#FFF" />
+              </Pressable>
+            </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -164,16 +313,12 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  onlineDot: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#34C759',
-    borderWidth: 2.5,
+  avatarText: {
+    fontWeight: 'bold',
+    fontSize: 20,
   },
   messageContent: {
     flex: 1,
@@ -205,17 +350,75 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
-  unreadBadge: {
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
+  emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingVertical: 120,
   },
-  unreadText: {
-    color: '#FFF',
-    fontSize: 12,
+  // Modal Styles
+  modalWrapper: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+  },
+  backBtn: {
+    padding: 6,
+  },
+  modalHeaderTitle: {
+    fontSize: 17,
     fontWeight: '700',
+  },
+  messagesContainer: {
+    padding: 16,
+    paddingBottom: 24,
+  },
+  msgRow: {
+    flexDirection: 'row',
+    marginBottom: 14,
+  },
+  msgBubble: {
+    maxWidth: '80%',
+    padding: 12,
+    borderRadius: 16,
+  },
+  msgText: {
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  msgTime: {
+    fontSize: 10,
+    textAlign: 'right',
+    marginTop: 4,
+  },
+  inputFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderTopWidth: 0.5,
+  },
+  inputField: {
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 100,
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 10,
+    fontSize: 15,
+  },
+  sendBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

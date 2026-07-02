@@ -1,91 +1,137 @@
-import { View, StyleSheet, FlatList, Pressable } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, FlatList, Pressable, RefreshControl, ActivityIndicator, Alert } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-
-const VENDORS = [
-  {
-    id: 'V-102',
-    name: 'Spicy Treats',
-    owner: 'Rahul Sharma',
-    status: 'Pending',
-    date: '2025-08-10',
-    type: 'Food',
-  },
-  {
-    id: 'V-103',
-    name: 'Home Bakes by Anjali',
-    owner: 'Anjali Desai',
-    status: 'Pending',
-    date: '2025-08-09',
-    type: 'Cakes',
-  },
-  {
-    id: 'V-098',
-    name: 'Sarah\'s Sweets',
-    owner: 'Sarah Khan',
-    status: 'Active',
-    date: '2025-07-20',
-    type: 'Cakes',
-  }
-];
+import { api } from '@/services/api';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function AdminVendors() {
   const theme = useTheme();
 
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
+
+  const fetchVendors = async () => {
+    try {
+      const res = await api.vendors.getAdminAll();
+      setVendors(res);
+    } catch (err) {
+      console.error('Failed to fetch vendors for admin:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchVendors();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchVendors();
+  }, []);
+
+  const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected') => {
+    setLoading(true);
+    try {
+      await api.vendors.approve(id, status);
+      Alert.alert('Status Updated', `Vendor marked as ${status}.`);
+      fetchVendors();
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Could not update vendor status.');
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
-    switch(status) {
-      case 'Pending': return theme.accent;
-      case 'Active': return theme.success;
-      case 'Rejected': return theme.error;
+    switch (status) {
+      case 'pending': return theme.accent;
+      case 'approved': return theme.success;
+      case 'rejected': return theme.error;
       default: return theme.textSecondary;
     }
   };
 
-  const renderVendor = ({ item }: { item: typeof VENDORS[0] }) => (
-    <Card style={styles.vendorCard}>
-      <View style={styles.vendorHeader}>
-        <View style={styles.avatar}>
-          <ThemedText style={{ fontWeight: 'bold' }}>{item.name.charAt(0)}</ThemedText>
-        </View>
-        <View style={styles.vendorInfo}>
-          <ThemedText style={{ fontWeight: 'bold', fontSize: 16 }}>{item.name}</ThemedText>
-          <ThemedText style={{ color: theme.textSecondary, fontSize: 14 }}>{item.owner}</ThemedText>
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-          <ThemedText style={{ fontSize: 12, fontWeight: 'bold', color: getStatusColor(item.status) }}>
-            {item.status}
-          </ThemedText>
-        </View>
-      </View>
+  const getFilteredVendors = () => {
+    return vendors.filter((v) => {
+      if (activeTab === 'pending') {
+        return v.status === 'pending';
+      }
+      return v.status === 'approved';
+    });
+  };
 
-      <View style={styles.vendorDetails}>
-        <View style={styles.detailItem}>
-          <ThemedText style={styles.detailLabel}>Type</ThemedText>
-          <ThemedText style={styles.detailValue}>{item.type}</ThemedText>
-        </View>
-        <View style={styles.detailItem}>
-          <ThemedText style={styles.detailLabel}>Applied On</ThemedText>
-          <ThemedText style={styles.detailValue}>{item.date}</ThemedText>
-        </View>
-      </View>
+  const renderVendor = ({ item }: { item: any }) => {
+    const statusColor = getStatusColor(item.status);
+    const dateFormatted = new Date(item.createdAt).toLocaleDateString([], {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
 
-      {item.status === 'Pending' && (
-        <View style={[styles.actionRow, { borderTopColor: theme.border }]}>
-          <Button title="Reject" variant="outline" size="sm" style={{ flex: 1, marginRight: 8 }} />
-          <Button title="Approve" size="sm" style={{ flex: 1 }} />
+    return (
+      <Card style={styles.vendorCard}>
+        <View style={styles.vendorHeader}>
+          <View style={styles.avatar}>
+            <ThemedText style={{ fontWeight: 'bold', color: theme.primary }}>
+              {item.name.charAt(0).toUpperCase()}
+            </ThemedText>
+          </View>
+          <View style={styles.vendorInfo}>
+            <ThemedText style={{ fontWeight: 'bold', fontSize: 16 }}>{item.name}</ThemedText>
+            <ThemedText style={{ color: theme.textSecondary, fontSize: 14 }}>
+              Owner: {item.user?.name || 'N/A'} ({item.user?.phoneNumber})
+            </ThemedText>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
+            <ThemedText style={{ fontSize: 12, fontWeight: 'bold', color: statusColor }}>
+              {item.status.toUpperCase()}
+            </ThemedText>
+          </View>
         </View>
-      )}
-      {item.status === 'Active' && (
-        <View style={[styles.actionRow, { borderTopColor: theme.border }]}>
-          <Button title="Issue Warning" variant="outline" size="sm" style={{ flex: 1, marginRight: 8 }} />
-          <Button title="Suspend" variant="secondary" size="sm" style={{ flex: 1 }} />
+
+        <View style={styles.vendorDetails}>
+          <View style={styles.detailItem}>
+            <ThemedText style={styles.detailLabel}>Category</ThemedText>
+            <ThemedText style={styles.detailValue}>{item.category.toUpperCase()}</ThemedText>
+          </View>
+          <View style={styles.detailItem}>
+            <ThemedText style={styles.detailLabel}>Applied On</ThemedText>
+            <ThemedText style={styles.detailValue}>{dateFormatted}</ThemedText>
+          </View>
         </View>
-      )}
-    </Card>
-  );
+
+        {item.status === 'pending' && (
+          <View style={[styles.actionRow, { borderTopColor: theme.border }]}>
+            <Button
+              title="Reject"
+              variant="outline"
+              size="sm"
+              style={{ flex: 1, marginRight: 8 }}
+              onPress={() => handleUpdateStatus(item.id, 'rejected')}
+            />
+            <Button
+              title="Approve"
+              size="sm"
+              style={{ flex: 1 }}
+              onPress={() => handleUpdateStatus(item.id, 'approved')}
+            />
+          </View>
+        )}
+      </Card>
+    );
+  };
+
+  const filtered = getFilteredVendors();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
@@ -93,22 +139,51 @@ export default function AdminVendors() {
         <ThemedText type="title">Vendors</ThemedText>
         
         <View style={styles.filterTabs}>
-          <Pressable style={[styles.tab, styles.activeTab, { borderBottomColor: theme.primary }]}>
-            <ThemedText style={{ color: theme.primary, fontWeight: 'bold' }}>Pending (2)</ThemedText>
+          <Pressable
+            onPress={() => setActiveTab('pending')}
+            style={[styles.tab, activeTab === 'pending' && [styles.activeTab, { borderBottomColor: theme.primary }]]}
+          >
+            <ThemedText
+              style={activeTab === 'pending' ? { color: theme.primary, fontWeight: 'bold' } : { color: theme.textSecondary }}
+            >
+              Pending ({vendors.filter(v => v.status === 'pending').length})
+            </ThemedText>
           </Pressable>
-          <Pressable style={styles.tab}>
-            <ThemedText style={{ color: theme.textSecondary }}>Active</ThemedText>
+          <Pressable
+            onPress={() => setActiveTab('approved')}
+            style={[styles.tab, activeTab === 'approved' && [styles.activeTab, { borderBottomColor: theme.primary }]]}
+          >
+            <ThemedText
+              style={activeTab === 'approved' ? { color: theme.primary, fontWeight: 'bold' } : { color: theme.textSecondary }}
+            >
+              Approved ({vendors.filter(v => v.status === 'approved').length})
+            </ThemedText>
           </Pressable>
         </View>
       </View>
 
-      <FlatList
-        data={VENDORS}
-        keyExtractor={item => item.id}
-        renderItem={renderVendor}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+      {loading && vendors.length === 0 ? (
+        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 40 }} />
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={item => item.id}
+          renderItem={renderVendor}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.primary]} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="storefront-outline" size={48} color={theme.textSecondary} />
+              <ThemedText style={{ color: theme.textSecondary, marginTop: 12 }}>
+                No {activeTab} vendors found.
+              </ThemedText>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -155,7 +230,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FF7A0020', // Primary with opacity
+    backgroundColor: '#FF7A0020',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -177,7 +252,7 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 12,
-    color: '#60646C', // textSecondary
+    color: '#60646C',
     marginBottom: 4,
   },
   detailValue: {
@@ -188,5 +263,10 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#F9F9F910',
     borderTopWidth: 1,
-  }
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+  },
 });
