@@ -73,21 +73,34 @@ export const api = {
   upload: {
     image: async (uri: string, fileName?: string, mimeType?: string): Promise<string> => {
       const formData = new FormData();
+      const name = fileName || uri.split('/').pop() || `photo_${Date.now()}.jpg`;
+      const type = mimeType || 'image/jpeg';
+      
+      // React Native requires the file:// prefix to remain for local filesystem access
+      const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
+
       formData.append('file', {
-        uri,
-        name: fileName || `photo_${Date.now()}.jpg`,
-        type: mimeType || 'image/jpeg',
+        uri: fileUri,
+        name,
+        type,
       } as any);
+
       const result = await requestFormData('/upload/image', formData);
       return `${SERVER_ROOT}${result.url}`;
     },
     video: async (uri: string, fileName?: string, mimeType?: string): Promise<string> => {
       const formData = new FormData();
+      const name = fileName || uri.split('/').pop() || `video_${Date.now()}.mp4`;
+      const type = mimeType || 'video/mp4';
+
+      const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
+
       formData.append('file', {
-        uri,
-        name: fileName || `video_${Date.now()}.mp4`,
-        type: mimeType || 'video/mp4',
+        uri: fileUri,
+        name,
+        type,
       } as any);
+
       const result = await requestFormData('/upload/video', formData);
       return `${SERVER_ROOT}${result.url}`;
     },
@@ -95,12 +108,13 @@ export const api = {
 
   // Vendors
   vendors: {
-    getAll: (filters: { category?: string; search?: string; minRating?: number; sortBy?: 'rating' | 'time' } = {}) => {
+    getAll: (filters: { category?: string; search?: string; minRating?: number; sortBy?: 'rating' | 'time'; location?: string } = {}) => {
       const params = new URLSearchParams();
       if (filters.category) params.append('category', filters.category);
       if (filters.search) params.append('search', filters.search);
       if (filters.minRating) params.append('minRating', filters.minRating.toString());
       if (filters.sortBy) params.append('sortBy', filters.sortBy);
+      if (filters.location) params.append('location', filters.location);
 
       const queryString = params.toString();
       return request(`/vendors${queryString ? `?${queryString}` : ''}`);
@@ -109,10 +123,10 @@ export const api = {
       request(`/vendors/${id}`),
     getProfileMe: () =>
       request('/vendors/profile/me'),
-    register: (name: string, image?: string, timeVal?: number, category?: string) =>
+    register: (name: string, image?: string, timeVal?: number, category?: string, location?: string) =>
       request('/vendors/register', {
         method: 'POST',
-        body: JSON.stringify({ name, image, timeVal, category }),
+        body: JSON.stringify({ name, image, timeVal, category, location }),
       }),
     getAdminAll: () =>
       request('/vendors/admin/all'),

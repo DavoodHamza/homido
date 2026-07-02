@@ -9,6 +9,7 @@ import { router } from 'expo-router';
 import { useThemeStore } from '@/hooks/useThemeStore';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import { api } from '@/services/api';
+import * as Location from 'expo-location';
 
 const CATEGORIES = [
   { id: 'all', name: 'All Food', icon: '🍽️' },
@@ -30,10 +31,52 @@ export default function Home() {
   const [sortBy, setSortBy] = useState<'rating' | 'time'>('rating');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [minRating, setMinRating] = useState<number>(0);
+  const [locationFilter, setLocationFilter] = useState('');
+  const [currentAddress, setCurrentAddress] = useState('Fetching location...');
 
   // Temporary states for Modal to apply on press
   const [tempSortBy, setTempSortBy] = useState<'rating' | 'time'>('rating');
   const [tempMinRating, setTempMinRating] = useState<number>(0);
+  const [tempLocationFilter, setTempLocationFilter] = useState('');
+
+  const requestAndFetchLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setCurrentAddress('Signature Towers, Hitech City');
+        setLocationFilter('Hitech City');
+        return;
+      }
+
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const geocoded = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
+
+      if (geocoded.length > 0) {
+        const item = geocoded[0];
+        const readable = [item.district, item.city, item.subregion].filter(Boolean).join(', ');
+        setCurrentAddress(readable || 'Signature Towers, Hitech City');
+        
+        // Use city or subregion/district as query filter keyword
+        const queryKeyword = item.district || item.city || item.subregion || '';
+        setLocationFilter(queryKeyword);
+      } else {
+        setCurrentAddress('Signature Towers, Hitech City');
+        setLocationFilter('Hitech City');
+      }
+    } catch (err) {
+      console.error('Error getting location:', err);
+      setCurrentAddress('Signature Towers, Hitech City');
+      setLocationFilter('Hitech City');
+    }
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    requestAndFetchLocation();
+  }, []);
 
   // Dynamic lists from backend
   const [vendors, setVendors] = useState<any[]>([]);
@@ -56,6 +99,7 @@ export default function Home() {
             search: searchQuery,
             minRating: minRating > 0 ? minRating : undefined,
             sortBy: sortBy,
+            location: locationFilter || undefined,
           });
           setVendors(res);
         } catch (err: any) {
@@ -67,7 +111,7 @@ export default function Home() {
       fetchVendors();
     }, 0);
     return () => clearTimeout(timer);
-  }, [selectedCategory, searchQuery, minRating, sortBy]);
+  }, [selectedCategory, searchQuery, minRating, sortBy, locationFilter]);
 
   const openVendorMenu = async (vendor: any) => {
     if (!isLoggedIn) {
@@ -158,15 +202,17 @@ export default function Home() {
     }
   };
 
-  const openFilterModal = () => {
+   const openFilterModal = () => {
     setTempSortBy(sortBy);
     setTempMinRating(minRating);
+    setTempLocationFilter(locationFilter);
     setFilterModalVisible(true);
   };
 
   const applyFilters = () => {
     setSortBy(tempSortBy);
     setMinRating(tempMinRating);
+    setLocationFilter(tempLocationFilter);
     setFilterModalVisible(false);
   };
 
@@ -175,15 +221,15 @@ export default function Home() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Header - Location */}
         <View style={styles.header}>
-          <View style={styles.locationContainer}>
+          <Pressable onPress={requestAndFetchLocation} style={styles.locationContainer}>
             <Ionicons name="location" size={24} color={theme.primary} />
             <View style={{ marginLeft: 8 }}>
-              <ThemedText style={styles.locationTitle}>Home</ThemedText>
+              <ThemedText style={styles.locationTitle}>Current Location ↻</ThemedText>
               <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }}>
-                {user?.address || 'Signature Towers, Hitech City'}
+                {currentAddress}
               </ThemedText>
             </View>
-          </View>
+          </Pressable>
           <View style={styles.headerActions}>
             <Pressable onPress={toggleTheme} style={{ padding: 8, marginRight: 4 }}>
               <Ionicons name={themeMode === 'dark' ? 'sunny' : 'moon'} size={22} color={theme.text} />
@@ -413,6 +459,21 @@ export default function Home() {
                   </Pressable>
                 ))}
               </View>
+            </View>
+
+            {/* Location Section */}
+            <View style={styles.modalSection}>
+              <ThemedText style={styles.modalSectionTitle}>Filter by Location</ThemedText>
+              <TextInput
+                style={[
+                  styles.locationInput,
+                  { borderColor: theme.border, color: theme.text, backgroundColor: theme.background },
+                ]}
+                placeholder="Enter city or area (e.g. Hitech City)"
+                placeholderTextColor={theme.textSecondary}
+                value={tempLocationFilter}
+                onChangeText={setTempLocationFilter}
+              />
             </View>
 
             {/* Action Buttons */}
@@ -805,5 +866,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     height: 50,
     borderRadius: 12,
+  },
+  locationInput: {
+    height: 50,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    fontWeight: '500',
   },
 });

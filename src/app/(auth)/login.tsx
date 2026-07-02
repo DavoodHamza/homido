@@ -11,7 +11,6 @@ import {
   Pressable,
 } from 'react-native';
 import { useAuthStore } from '@/hooks/useAuthStore';
-import { Button } from '@/components/ui/Button';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { router } from 'expo-router';
@@ -55,7 +54,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background === '#FFF5EB' ? '#FCFBF9' : '#0B0B0C' }]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -65,6 +64,12 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* Neon Glow Accents */}
+          <View style={styles.neonGlowContainer}>
+            <View style={[styles.glowOrb, styles.orbLeft, { backgroundColor: '#FF7A00' }]} />
+            <View style={[styles.glowOrb, styles.orbRight, { backgroundColor: '#FFB800' }]} />
+          </View>
+
           {/* Header */}
           <View style={styles.header}>
             <Image
@@ -72,21 +77,29 @@ export default function LoginScreen() {
               style={styles.logo}
               resizeMode="contain"
             />
-            <ThemedText style={styles.tagline}>
+            <ThemedText style={[styles.tagline, { color: theme.textSecondary }]}>
               Homemade food, delivered with love
             </ThemedText>
           </View>
 
-          {/* Card */}
-          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <ThemedText style={styles.cardTitle}>Welcome Back 👋</ThemedText>
+          {/* Glassmorphic Form Card */}
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: theme.background === '#FFF5EB' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(24, 24, 28, 0.75)',
+                borderColor: theme.background === '#FFF5EB' ? 'rgba(234, 223, 207, 0.5)' : 'rgba(255, 255, 255, 0.08)',
+              },
+            ]}
+          >
+            <ThemedText style={styles.cardTitle}>Welcome Back</ThemedText>
             <ThemedText style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
-              Sign in to continue
+              Sign in to continue your culinary journey
             </ThemedText>
 
-            {/* Phone Input */}
-            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: theme.background }]}>
-              <Ionicons name="call-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
+            {/* Input field 1 */}
+            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: theme.background === '#FFF5EB' ? '#F6F5F2' : '#141416' }]}>
+              <Ionicons name="call-outline" size={20} color={theme.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}
                 placeholder="Phone Number"
@@ -98,9 +111,9 @@ export default function LoginScreen() {
               />
             </View>
 
-            {/* Password Input */}
-            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: theme.background }]}>
-              <Ionicons name="lock-closed-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
+            {/* Input field 2 */}
+            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: theme.background === '#FFF5EB' ? '#F6F5F2' : '#141416' }]}>
+              <Ionicons name="lock-closed-outline" size={20} color={theme.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}
                 placeholder="Password"
@@ -119,52 +132,55 @@ export default function LoginScreen() {
               </Pressable>
             </View>
 
-            {/* Login Button */}
-            <Button
-              title={loading ? 'Signing in...' : 'Sign In'}
+            {/* Premium Login Button */}
+            <Pressable
               onPress={handleLogin}
               disabled={loading}
-              style={styles.loginBtn}
-            />
+              style={({ pressed }) => [
+                styles.gradientBtn,
+                { backgroundColor: theme.primary, opacity: pressed || loading ? 0.85 : 1 },
+              ]}
+            >
+              <ThemedText style={styles.btnText}>
+                {loading ? 'Signing in...' : 'Sign In'}
+              </ThemedText>
+              <Ionicons name="arrow-forward" size={18} color="#FFF" />
+            </Pressable>
 
             {/* Divider */}
             <View style={styles.dividerRow}>
               <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-              <ThemedText style={[styles.dividerText, { color: theme.textSecondary }]}>or</ThemedText>
+              <ThemedText style={[styles.dividerText, { color: theme.textSecondary }]}>quick test logins</ThemedText>
               <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
             </View>
 
-            {/* Credentials hint */}
-            <View style={[styles.credentialsBox, { backgroundColor: theme.primary + '12', borderColor: theme.primary + '30' }]}>
-              <View style={styles.credentialsHeader}>
-                <Ionicons name="key-outline" size={16} color={theme.primary} />
-                <ThemedText style={[styles.credentialsTitle, { color: theme.primary }]}>
-                  Demo Credentials
-                </ThemedText>
-              </View>
-              <View style={styles.credentialsGrid}>
-                <View style={styles.credRow}>
-                  <ThemedText style={[styles.credRole, { color: theme.textSecondary }]}>User</ThemedText>
-                  <ThemedText style={[styles.credValue, { color: theme.text }]}>9876543210 / password123</ThemedText>
-                </View>
-                <View style={styles.credRow}>
-                  <ThemedText style={[styles.credRole, { color: theme.textSecondary }]}>Vendor</ThemedText>
-                  <ThemedText style={[styles.credValue, { color: theme.text }]}>9876543211 / password123</ThemedText>
-                </View>
-                <View style={styles.credRow}>
-                  <ThemedText style={[styles.credRole, { color: theme.textSecondary }]}>Admin</ThemedText>
-                  <ThemedText style={[styles.credValue, { color: theme.text }]}>9876543212 / password123</ThemedText>
-                </View>
-              </View>
+            {/* Modern Demo Panel */}
+            <View style={[styles.demoWrapper, { backgroundColor: theme.background === '#FFF5EB' ? 'rgba(255, 122, 0, 0.05)' : 'rgba(255, 122, 0, 0.03)' }]}>
+              {['User', 'Vendor', 'Admin'].map((roleType, index) => {
+                const creds = ['9876543210', '9876543211', '9876543212'];
+                return (
+                  <Pressable
+                    key={roleType}
+                    onPress={() => {
+                      setPhoneNumber(creds[index]);
+                      setPassword('password123');
+                    }}
+                    style={[styles.demoChip, { borderColor: theme.border, backgroundColor: theme.card }]}
+                  >
+                    <Ionicons name="key" size={12} color={theme.primary} />
+                    <ThemedText style={styles.demoChipText}>{roleType}</ThemedText>
+                  </Pressable>
+                );
+              })}
             </View>
 
             {/* Footer */}
             <View style={styles.footer}>
-              <ThemedText style={{ color: theme.textSecondary }}>
+              <ThemedText style={{ color: theme.textSecondary, fontSize: 13 }}>
                 Don&apos;t have an account?{' '}
               </ThemedText>
               <Pressable onPress={() => router.push('/(auth)/signup')}>
-                <ThemedText style={{ color: theme.primary, fontWeight: '700' }}>Sign Up</ThemedText>
+                <ThemedText style={{ color: theme.primary, fontWeight: '700', fontSize: 13 }}>Create Account</ThemedText>
               </Pressable>
             </View>
           </View>
@@ -184,112 +200,147 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 40,
   },
+  neonGlowContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'none',
+  },
+  glowOrb: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    opacity: 0.12,
+    filter: Platform.OS === 'web' ? 'blur(100px)' : undefined, // Standard blur filter for web
+  },
+  orbLeft: {
+    top: -50,
+    left: -80,
+  },
+  orbRight: {
+    top: 200,
+    right: -80,
+  },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 30,
   },
   logo: {
-    width: 180,
+    width: 170,
     height: 80,
   },
   tagline: {
     marginTop: 8,
     fontSize: 14,
+    letterSpacing: 0.3,
     textAlign: 'center',
-    opacity: 0.6,
   },
   card: {
-    borderRadius: 24,
+    borderRadius: 28,
     borderWidth: 1,
-    padding: 24,
+    paddingHorizontal: 22,
+    paddingVertical: 28,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.08,
     shadowRadius: 24,
-    elevation: 5,
+    elevation: 10,
   },
   cardTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontSize: 24,
+    fontWeight: '800',
     textAlign: 'center',
+    marginBottom: 4,
+    letterSpacing: -0.5,
   },
   cardSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     textAlign: 'center',
-    marginBottom: 28,
+    marginBottom: 24,
+    lineHeight: 18,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 54,
+    height: 58,
     borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
+    borderRadius: 18,
+    paddingHorizontal: 16,
     marginBottom: 14,
   },
   inputIcon: {
-    marginRight: 10,
+    marginRight: 12,
   },
   input: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     height: '100%',
+    fontWeight: '500',
   },
   eyeBtn: {
-    padding: 4,
+    padding: 6,
   },
-  loginBtn: {
-    height: 54,
-    borderRadius: 14,
-    marginTop: 8,
+  gradientBtn: {
+    height: 56,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+    shadowColor: '#FF7A00',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  btnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 22,
   },
   dividerLine: {
     flex: 1,
     height: 1,
+    opacity: 0.4,
   },
   dividerText: {
     marginHorizontal: 12,
-    fontSize: 13,
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontWeight: '600',
   },
-  credentialsBox: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    marginBottom: 20,
-  },
-  credentialsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 10,
-  },
-  credentialsTitle: {
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  credentialsGrid: {
-    gap: 6,
-  },
-  credRow: {
+  demoWrapper: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    padding: 10,
+    borderRadius: 18,
+    gap: 8,
+    marginBottom: 24,
   },
-  credRole: {
-    fontSize: 12,
-    fontWeight: '600',
-    width: 50,
-  },
-  credValue: {
-    fontSize: 12,
+  demoChip: {
     flex: 1,
-    textAlign: 'right',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 38,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 4,
+  },
+  demoChipText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   footer: {
     flexDirection: 'row',

@@ -77,8 +77,8 @@ export default function MediaPicker({
     const options: ImagePicker.ImagePickerOptions = {
       mediaTypes:
         type === 'video'
-          ? ImagePicker.MediaTypeOptions.Videos
-          : ImagePicker.MediaTypeOptions.Images,
+          ? ['videos']
+          : ['images'],
       allowsEditing: type === 'image',
       quality: type === 'image' ? 0.85 : undefined,
       videoMaxDuration: 120, // 2 min max

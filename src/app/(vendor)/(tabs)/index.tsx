@@ -23,6 +23,7 @@ export default function VendorDashboard() {
   const [category, setCategory] = useState('cakes');
   const [timeVal, setTimeVal] = useState('20');
   const [imageUrl, setImageUrl] = useState('');
+  const [locationStr, setLocationStr] = useState('Signature Towers, Hitech City');
 
   const loadData = async () => {
     try {
@@ -59,7 +60,8 @@ export default function VendorDashboard() {
         kitchenName.trim(),
         imageUrl.trim() || undefined,
         parseInt(timeVal) || 20,
-        category
+        category,
+        locationStr.trim() || undefined
       );
       setProfile(prof);
       Alert.alert('Success', 'Kitchen profile registered successfully!');
@@ -149,6 +151,14 @@ export default function VendorDashboard() {
               keyboardType="number-pad"
               value={timeVal}
               onChangeText={setTimeVal}
+            />
+
+            <TextInput
+              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.card }]}
+              placeholder="Kitchen Location / Address"
+              placeholderTextColor={theme.textSecondary}
+              value={locationStr}
+              onChangeText={setLocationStr}
             />
 
             <ThemedText style={{ color: theme.textSecondary, marginBottom: 8, fontSize: 13 }}>Kitchen Cover Photo:</ThemedText>
