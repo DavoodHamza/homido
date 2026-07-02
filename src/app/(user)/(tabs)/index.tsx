@@ -221,11 +221,11 @@ export default function Home() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Header - Location */}
         <View style={styles.header}>
-          <Pressable onPress={requestAndFetchLocation} style={styles.locationContainer}>
+          <Pressable onPress={requestAndFetchLocation} style={[styles.locationContainer, { flex: 1, marginRight: 16 }]}>
             <Ionicons name="location" size={24} color={theme.primary} />
-            <View style={{ marginLeft: 8 }}>
+            <View style={{ flex: 1, marginLeft: 8 }}>
               <ThemedText style={styles.locationTitle}>Current Location ↻</ThemedText>
-              <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }}>
+              <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }} numberOfLines={1}>
                 {currentAddress}
               </ThemedText>
             </View>
