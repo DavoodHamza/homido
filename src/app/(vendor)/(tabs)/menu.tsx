@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { api } from '@/services/api';
+import MediaPicker from '@/components/MediaPicker';
 
 export default function VendorMenu() {
   const theme = useTheme();
@@ -253,12 +254,12 @@ export default function VendorMenu() {
               onChangeText={setPrice}
             />
 
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.card }]}
-              placeholder="Image URL"
-              placeholderTextColor={theme.textSecondary}
+            <ThemedText style={{ color: theme.textSecondary, marginBottom: 8, fontSize: 13 }}>Photo / Video:</ThemedText>
+            <MediaPicker
               value={image}
-              onChangeText={setImage}
+              onUploaded={(url) => setImage(url)}
+              mediaType="video"
+              label="Add Food Photo or Video"
             />
 
             <ThemedText style={{ color: theme.textSecondary, marginBottom: 8, fontSize: 13 }}>Category:</ThemedText>

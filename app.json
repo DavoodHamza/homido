@@ -34,6 +34,14 @@
             "imageWidth": 200
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Homido needs access to your photo library to let you add food photos and videos.",
+          "cameraPermission": "Homido needs camera access to take photos and videos of your food.",
+          "microphonePermission": "Homido needs microphone access to record food videos."
+        }
       ]
     ],
     "experiments": {

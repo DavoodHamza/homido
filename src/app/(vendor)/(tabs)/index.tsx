@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import { api } from '@/services/api';
+import MediaPicker from '@/components/MediaPicker';
 
 export default function VendorDashboard() {
   const theme = useTheme();
@@ -150,12 +151,12 @@ export default function VendorDashboard() {
               onChangeText={setTimeVal}
             />
 
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.card }]}
-              placeholder="Cover Image URL (Optional)"
-              placeholderTextColor={theme.textSecondary}
+            <ThemedText style={{ color: theme.textSecondary, marginBottom: 8, fontSize: 13 }}>Kitchen Cover Photo:</ThemedText>
+            <MediaPicker
               value={imageUrl}
-              onChangeText={setImageUrl}
+              onUploaded={(url) => setImageUrl(url)}
+              mediaType="image"
+              label="Add Kitchen Cover Photo"
             />
 
             <Button title="Create Kitchen Profile" onPress={handleRegisterKitchen} style={{ height: 50, marginTop: 10 }} />

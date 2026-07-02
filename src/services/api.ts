@@ -2,28 +2,24 @@ import { useAuthStore } from '../hooks/useAuthStore';
 import { API_CONFIG } from '../config';
 
 export const BASE_URL = API_CONFIG.BASE_URL;
+export const SERVER_ROOT = API_CONFIG.SERVER_ROOT;
+
 console.log(`[API Client] Initialized with Base URL: ${BASE_URL}`);
 
-// Helper function to handle fetch calls
+// Helper — JSON request
 async function request(endpoint: string, options: RequestInit = {}) {
   const token = useAuthStore.getState().token;
-  
+
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
-  
-  const config = {
-    ...options,
-    headers,
-  };
 
+  const config = { ...options, headers };
   const response = await fetch(`${BASE_URL}${endpoint}`, config);
 
-  if (response.status === 204) {
-    return null;
-  }
+  if (response.status === 204) return null;
 
   const data = await response.json();
 
@@ -35,10 +31,33 @@ async function request(endpoint: string, options: RequestInit = {}) {
   return data;
 }
 
+// Helper — FormData (multipart) request; no Content-Type set so browser adds boundary
+async function requestFormData(endpoint: string, formData: FormData) {
+  const token = useAuthStore.getState().token;
+
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data?.message || 'Upload failed';
+    throw new Error(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
+  }
+
+  return data as { url: string };
+}
+
 export const api = {
   // Authentication
   auth: {
-    login: (phoneNumber: string, pass: string) => 
+    login: (phoneNumber: string, pass: string) =>
       request('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ phoneNumber, password: pass }),
@@ -50,6 +69,30 @@ export const api = {
       }),
   },
 
+  // Upload (image or video file → server disk → returns absolute URL)
+  upload: {
+    image: async (uri: string, fileName?: string, mimeType?: string): Promise<string> => {
+      const formData = new FormData();
+      formData.append('file', {
+        uri,
+        name: fileName || `photo_${Date.now()}.jpg`,
+        type: mimeType || 'image/jpeg',
+      } as any);
+      const result = await requestFormData('/upload/image', formData);
+      return `${SERVER_ROOT}${result.url}`;
+    },
+    video: async (uri: string, fileName?: string, mimeType?: string): Promise<string> => {
+      const formData = new FormData();
+      formData.append('file', {
+        uri,
+        name: fileName || `video_${Date.now()}.mp4`,
+        type: mimeType || 'video/mp4',
+      } as any);
+      const result = await requestFormData('/upload/video', formData);
+      return `${SERVER_ROOT}${result.url}`;
+    },
+  },
+
   // Vendors
   vendors: {
     getAll: (filters: { category?: string; search?: string; minRating?: number; sortBy?: 'rating' | 'time' } = {}) => {
@@ -58,11 +101,11 @@ export const api = {
       if (filters.search) params.append('search', filters.search);
       if (filters.minRating) params.append('minRating', filters.minRating.toString());
       if (filters.sortBy) params.append('sortBy', filters.sortBy);
-      
+
       const queryString = params.toString();
       return request(`/vendors${queryString ? `?${queryString}` : ''}`);
     },
-    getById: (id: string) => 
+    getById: (id: string) =>
       request(`/vendors/${id}`),
     getProfileMe: () =>
       request('/vendors/profile/me'),
@@ -95,9 +138,7 @@ export const api = {
         body: JSON.stringify(data),
       }),
     delete: (id: string) =>
-      request(`/menu/${id}`, {
-        method: 'DELETE',
-      }),
+      request(`/menu/${id}`, { method: 'DELETE' }),
   },
 
   // Orders
