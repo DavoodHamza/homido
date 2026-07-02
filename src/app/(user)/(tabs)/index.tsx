@@ -2,9 +2,10 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, useEffect } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View, ActivityIndicator, Alert } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View, ActivityIndicator, Alert, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import MapView, { Marker, Callout } from 'react-native-maps';
 
 import { useThemeStore } from '@/hooks/useThemeStore';
 import { useAuthStore } from '@/hooks/useAuthStore';
@@ -33,6 +34,8 @@ export default function Home() {
   const [minRating, setMinRating] = useState<number>(0);
   const [locationFilter, setLocationFilter] = useState('');
   const [currentAddress, setCurrentAddress] = useState('Fetching location...');
+  const [userCoords, setUserCoords] = useState({ latitude: 17.448292, longitude: 78.374112 });
+  const [mapVisible, setMapVisible] = useState(false);
 
   // Temporary states for Modal to apply on press
   const [tempSortBy, setTempSortBy] = useState<'rating' | 'time'>('rating');
@@ -49,6 +52,11 @@ export default function Home() {
       }
 
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setUserCoords({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
+
       const geocoded = await Location.reverseGeocodeAsync({
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
@@ -259,6 +267,9 @@ export default function Home() {
               </Pressable>
             )}
           </View>
+          <Pressable onPress={() => setMapVisible(true)} style={[styles.mapToggleBtn, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
+            <Ionicons name="map" size={20} color={theme.primary} />
+          </Pressable>
           <Pressable onPress={openFilterModal} style={[styles.filterButton, { backgroundColor: theme.primary }]}>
             <Ionicons name="options-outline" size={20} color="#FFF" />
           </Pressable>
@@ -496,6 +507,63 @@ export default function Home() {
             </View>
           </Pressable>
         </Pressable>
+      </Modal>
+
+      {/* Map View Modal */}
+      <Modal
+        animationType="slide"
+        visible={mapVisible}
+        onRequestClose={() => setMapVisible(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+          <View style={[styles.mapHeader, { borderBottomColor: theme.border }]}>
+            <Pressable onPress={() => setMapVisible(false)} style={styles.mapBackBtn}>
+              <Ionicons name="arrow-back" size={24} color={theme.text} />
+            </Pressable>
+            <ThemedText style={styles.mapTitle}>Kitchens Nearby</ThemedText>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <MapView
+            style={styles.map}
+            initialRegion={{
+              latitude: userCoords.latitude,
+              longitude: userCoords.longitude,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
+            }}
+            showsUserLocation
+          >
+            {vendors.map((vendor) => {
+              const vLat = Number(vendor.latitude);
+              const vLng = Number(vendor.longitude);
+              if (isNaN(vLat) || isNaN(vLng)) return null;
+
+              return (
+                <Marker
+                  key={vendor.id}
+                  coordinate={{ latitude: vLat, longitude: vLng }}
+                  title={vendor.name}
+                  description={`${vendor.category} • ⭐️ ${vendor.rating}`}
+                >
+                  <Callout
+                    onPress={() => {
+                      setMapVisible(false);
+                      openVendorMenu(vendor);
+                    }}
+                  >
+                    <View style={styles.calloutContainer}>
+                      <ThemedText style={styles.calloutTitle}>{vendor.name}</ThemedText>
+                      <ThemedText style={styles.calloutSub}>{vendor.category.toUpperCase()}</ThemedText>
+                      <ThemedText style={styles.calloutRating}>⭐️ {vendor.rating} • {vendor.timeVal} mins</ThemedText>
+                      <ThemedText style={styles.calloutAction}>Tap to view menu</ThemedText>
+                    </View>
+                  </Callout>
+                </Marker>
+              );
+            })}
+          </MapView>
+        </SafeAreaView>
       </Modal>
 
       {/* Menu / Checkout Drawer Modal */}
@@ -874,5 +942,58 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 15,
     fontWeight: '500',
+  },
+  mapToggleBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapHeader: {
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+  },
+  mapBackBtn: {
+    padding: 8,
+  },
+  mapTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  map: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height - 112, // subtracting header heights
+  },
+  calloutContainer: {
+    width: 160,
+    padding: 4,
+    alignItems: 'center',
+  },
+  calloutTitle: {
+    fontWeight: '700',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  calloutSub: {
+    fontSize: 10,
+    color: '#666',
+    marginTop: 2,
+  },
+  calloutRating: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  calloutAction: {
+    fontSize: 10,
+    color: '#FF7A00',
+    fontWeight: '700',
+    marginTop: 6,
+    textDecorationLine: 'underline',
   },
 });
