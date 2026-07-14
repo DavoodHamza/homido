@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '@/services/api';
 import { useAuthStore } from '@/hooks/useAuthStore';
+import { useLocalSearchParams, router } from 'expo-router';
 
 export default function ChatScreen() {
   const theme = useTheme();
@@ -16,9 +17,14 @@ export default function ChatScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
 
+  const params = useLocalSearchParams();
+  const openVendorId = params.vendorId as string | undefined;
+  const openVendorName = params.vendorName as string | undefined;
+
   // Active Chat Modal
   const [selectedPartner, setSelectedPartner] = useState<any | null>(null);
   const [chatModalVisible, setChatModalVisible] = useState(false);
+  const [openedFromExternal, setOpenedFromExternal] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [newMessage, setNewMessage] = useState('');
@@ -49,6 +55,17 @@ export default function ChatScreen() {
       clearInterval(interval);
     };
   }, []);
+
+  useEffect(() => {
+    if (openVendorId && openVendorName) {
+      router.setParams({ vendorId: '', vendorName: '' });
+      setOpenedFromExternal(true);
+      openConversation({
+        id: openVendorId,
+        name: openVendorName
+      });
+    }
+  }, [openVendorId, openVendorName]);
 
   const openConversation = async (partner: any) => {
     setSelectedPartner(partner);
@@ -185,7 +202,13 @@ export default function ChatScreen() {
       <Modal
         animationType="slide"
         visible={chatModalVisible}
-        onRequestClose={() => setChatModalVisible(false)}
+        onRequestClose={() => {
+          setChatModalVisible(false);
+          if (openedFromExternal) {
+            setOpenedFromExternal(false);
+            if (router.canGoBack()) router.back();
+          }
+        }}
       >
         <SafeAreaView style={[styles.modalWrapper, { backgroundColor: theme.background }]}>
           <KeyboardAvoidingView
@@ -194,7 +217,13 @@ export default function ChatScreen() {
           >
             {/* Modal Header */}
             <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
-              <Pressable onPress={() => setChatModalVisible(false)} style={styles.backBtn}>
+              <Pressable onPress={() => {
+                setChatModalVisible(false);
+                if (openedFromExternal) {
+                  setOpenedFromExternal(false);
+                  if (router.canGoBack()) router.back();
+                }
+              }} style={styles.backBtn}>
                 <Ionicons name="chevron-back" size={24} color={theme.primary} />
               </Pressable>
               <ThemedText style={styles.modalHeaderTitle}>{selectedPartner?.name}</ThemedText>

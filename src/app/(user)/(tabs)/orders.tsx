@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, Image, Pressable, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, FlatList, Image, Pressable, RefreshControl, ActivityIndicator, Alert } from 'react-native';
+import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -99,6 +100,12 @@ export default function OrdersScreen() {
             <ThemedText style={[styles.dateText, { color: theme.textSecondary }]}>{formattedDate}</ThemedText>
           </View>
           <View style={styles.actionButtons}>
+            <Pressable 
+              style={[styles.actionBtn, { borderColor: theme.primary }]} 
+              onPress={() => router.push({ pathname: '/(user)/(tabs)/chat', params: { vendorId: item.vendor?.userId, vendorName: item.vendor?.name } })}
+            >
+              <ThemedText style={[styles.actionBtnText, { color: theme.primary }]}>Chat</ThemedText>
+            </Pressable>
             {item.status === 'Delivered' ? (
               <Pressable style={[styles.actionBtn, { borderColor: theme.primary }]} onPress={() => Alert.alert('Success', 'Items added to cart!')}>
                 <ThemedText style={[styles.actionBtnText, { color: theme.primary }]}>Reorder</ThemedText>
