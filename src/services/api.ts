@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { API_CONFIG } from '../config';
 
@@ -31,20 +32,31 @@ async function request(endpoint: string, options: RequestInit = {}) {
   return data;
 }
 
-// Helper — FormData (multipart) request; no Content-Type set so browser adds boundary
+// Helper — FormData (multipart) request; no Content-Type set so RN adds boundary
 async function requestFormData(endpoint: string, formData: FormData) {
   const token = useAuthStore.getState().token;
 
   const headers = new Headers();
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
+  const url = `${BASE_URL}${endpoint}`;
+  console.log(`[Upload] POST ${url}`);
+
+  const response = await fetch(url, {
     method: 'POST',
     headers,
     body: formData,
   });
 
-  const data = await response.json();
+  const text = await response.text();
+  console.log(`[Upload] Response ${response.status}: ${text}`);
+
+  let data: any;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Upload failed: server returned non-JSON response (${response.status})`);
+  }
 
   if (!response.ok) {
     const errorMessage = data?.message || 'Upload failed';
@@ -75,31 +87,35 @@ export const api = {
       const formData = new FormData();
       const name = fileName || uri.split('/').pop() || `photo_${Date.now()}.jpg`;
       const type = mimeType || 'image/jpeg';
-      
-      // React Native requires the file:// prefix to remain for local filesystem access
-      const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
 
-      formData.append('file', {
-        uri: fileUri,
-        name,
-        type,
-      } as any);
+      if (Platform.OS === 'web') {
+        // Web: fetch the blob URL and convert to a real File object
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const file = new File([blob], name, { type });
+        formData.append('file', file);
+      } else {
+        // Native: RN's fetch polyfill understands the { uri, name, type } pattern
+        formData.append('file', { uri, name, type } as any);
+      }
 
       const result = await requestFormData('/upload/image', formData);
       return `${SERVER_ROOT}${result.url}`;
     },
+
     video: async (uri: string, fileName?: string, mimeType?: string): Promise<string> => {
       const formData = new FormData();
       const name = fileName || uri.split('/').pop() || `video_${Date.now()}.mp4`;
       const type = mimeType || 'video/mp4';
 
-      const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
-
-      formData.append('file', {
-        uri: fileUri,
-        name,
-        type,
-      } as any);
+      if (Platform.OS === 'web') {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const file = new File([blob], name, { type });
+        formData.append('file', file);
+      } else {
+        formData.append('file', { uri, name, type } as any);
+      }
 
       const result = await requestFormData('/upload/video', formData);
       return `${SERVER_ROOT}${result.url}`;

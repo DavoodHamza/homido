@@ -2,10 +2,20 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, useEffect } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View, ActivityIndicator, Alert, Dimensions } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View, ActivityIndicator, Alert, Dimensions, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import MapView, { Marker, Callout } from 'react-native-maps';
+
+// react-native-maps doesn't support web — conditionally import for native only
+let MapView: any;
+let Marker: any;
+let Callout: any;
+if (Platform.OS !== 'web') {
+  const Maps = require('react-native-maps');
+  MapView = Maps.default;
+  Marker = Maps.Marker;
+  Callout = Maps.Callout;
+}
 
 import { useThemeStore } from '@/hooks/useThemeStore';
 import { useAuthStore } from '@/hooks/useAuthStore';

@@ -93,6 +93,15 @@ export default function MediaPicker({
     if (result.canceled || !result.assets?.length) return;
 
     const asset = result.assets[0];
+    console.log('[MediaPicker] Picked asset:', {
+      uri: asset.uri?.substring(0, 80),
+      fileName: asset.fileName,
+      mimeType: asset.mimeType,
+      width: asset.width,
+      height: asset.height,
+      type,
+    });
+
     setUploading(true);
 
     try {
@@ -101,14 +110,18 @@ export default function MediaPicker({
         asset.mimeType ||
         (type === 'video' ? 'video/mp4' : 'image/jpeg');
 
+      console.log('[MediaPicker] Uploading with mimeType:', mimeType);
+
       if (type === 'video') {
         serverUrl = await api.upload.video(asset.uri, asset.fileName ?? undefined, mimeType);
       } else {
         serverUrl = await api.upload.image(asset.uri, asset.fileName ?? undefined, mimeType);
       }
 
+      console.log('[MediaPicker] Upload success, URL:', serverUrl);
       onUploaded(serverUrl);
     } catch (err: any) {
+      console.error('[MediaPicker] Upload error:', err);
       Alert.alert('Upload Failed', err.message || 'Could not upload file. Please try again.');
     } finally {
       setUploading(false);
