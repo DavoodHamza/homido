@@ -178,6 +178,17 @@ export const api = {
       request(`/menu/${id}`, { method: 'DELETE' }),
   },
 
+  // Users
+  users: {
+    me: () => request('/users/me'),
+    update: (data: any) =>
+      request('/users/me', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    getPrimaryAdmin: () => request('/chat/admin/primary'),
+  },
+
   // Orders
   orders: {
     create: (vendorId: string, items: { menuItemId: string; quantity: number }[]) =>
@@ -198,12 +209,12 @@ export const api = {
   chat: {
     getConversations: () =>
       request('/chat/conversations'),
-    getConversation: (otherUserId: string) =>
-      request(`/chat/messages/${otherUserId}`),
-    sendMessage: (receiverId: string, message: string) =>
+    getConversation: (otherUserId: string, orderId?: string) =>
+      request(`/chat/messages/${otherUserId}${orderId ? `?orderId=${orderId}` : ''}`),
+    sendMessage: (receiverId: string, message: string, orderId?: string) =>
       request('/chat/send', {
         method: 'POST',
-        body: JSON.stringify({ receiverId, message }),
+        body: JSON.stringify({ receiverId, message, orderId }),
       }),
   },
 };

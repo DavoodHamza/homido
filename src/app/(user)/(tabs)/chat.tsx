@@ -21,6 +21,7 @@ export default function ChatScreen() {
   const params = useLocalSearchParams();
   const openVendorId = params.vendorId as string | undefined;
   const openVendorName = params.vendorName as string | undefined;
+  const openOrderId = params.orderId as string | undefined;
 
   // Active Chat Modal
   const [selectedPartner, setSelectedPartner] = useState<any | null>(null);
@@ -60,25 +61,39 @@ export default function ChatScreen() {
   }, []);
 
   useEffect(() => {
-    if (openVendorId && openVendorName) {
-      router.setParams({ vendorId: '', vendorName: '' });
+    if (openOrderId) {
+      router.setParams({ vendorId: '', vendorName: '', orderId: '' });
+      setOpenedFromExternal(true);
+      openConversation({
+        isGroup: true,
+        orderId: openOrderId,
+        otherUser: {
+          id: `order-${openOrderId}`,
+          name: `Order #${openOrderId.substring(0,6)}`
+        }
+      }, true);
+    } else if (openVendorId && openVendorName) {
+      router.setParams({ vendorId: '', vendorName: '', orderId: '' });
       setOpenedFromExternal(true);
       openConversation({
         id: openVendorId,
         name: openVendorName
       });
     }
-  }, [openVendorId, openVendorName]);
+  }, [openVendorId, openVendorName, openOrderId]);
 
-  const openConversation = async (partner: any) => {
-    setSelectedPartner(partner);
+  const openConversation = async (partnerOrGroup: any, isGroupFlag?: boolean) => {
+    const isGroup = isGroupFlag || partnerOrGroup.isGroup;
+    const orderId = partnerOrGroup.orderId;
+    const partner = partnerOrGroup.otherUser || partnerOrGroup;
+    setSelectedPartner({ ...partner, isGroup, orderId });
     setChatModalVisible(true);
     setMessages([]);
     setNewMessage('');
     setMessagesLoading(true);
     
     try {
-      const msgs = await api.chat.getConversation(partner.id);
+      const msgs = await api.chat.getConversation(partner.id, orderId);
       setMessages(msgs);
       setTimeout(() => messageScrollRef.current?.scrollToEnd({ animated: false }), 100);
     } catch (err) {
@@ -93,7 +108,7 @@ export default function ChatScreen() {
     
     const pollMessages = async () => {
       try {
-        const msgs = await api.chat.getConversation(selectedPartner.id);
+        const msgs = await api.chat.getConversation(selectedPartner.id, selectedPartner.orderId);
         setMessages(msgs);
       } catch (err) {
         console.error(err);
@@ -124,7 +139,7 @@ export default function ChatScreen() {
     setTimeout(() => messageScrollRef.current?.scrollToEnd({ animated: true }), 100);
 
     try {
-      const sentMsg = await api.chat.sendMessage(selectedPartner.id, textToSend);
+      const sentMsg = await api.chat.sendMessage(selectedPartner.id, textToSend, selectedPartner.orderId);
       // Replace optimistic message
       setMessages(prev => prev.map(m => m.id === optimisticMsg.id ? sentMsg : m));
       fetchConversations();
@@ -144,15 +159,16 @@ export default function ChatScreen() {
   const renderConversation = ({ item }: { item: any }) => {
     const timeFormatted = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const isVendor = item.otherUser?.role === 'vendor';
+    const isGroup = item.isGroup;
 
     return (
       <Pressable 
-        onPress={() => openConversation(item.otherUser)}
+        onPress={() => openConversation(item)}
         style={[styles.conversationCard, { borderBottomColor: theme.border }]}
       >
         <View style={styles.avatarContainer}>
           <Image 
-            source={{ uri: `https://ui-avatars.com/api/?name=${item.otherUser?.name}&background=random` }} 
+            source={{ uri: `https://ui-avatars.com/api/?name=${item.otherUser?.name || 'Support'}&background=random` }} 
             style={styles.avatar}
           />
         </View>
@@ -178,6 +194,18 @@ export default function ChatScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       <View style={styles.headerBar}>
         <ThemedText style={styles.headerTitle}>Messages</ThemedText>
+        <Pressable 
+          style={[styles.supportBtn, { backgroundColor: theme.primary + '20' }]} 
+          onPress={async () => {
+            const admin = await api.users.getPrimaryAdmin();
+            if (admin && admin.id) {
+              openConversation(admin);
+            }
+          }}
+        >
+          <Ionicons name="help-buoy-outline" size={16} color={theme.primary} />
+          <ThemedText style={[styles.supportBtnText, { color: theme.primary }]}>Support</ThemedText>
+        </Pressable>
       </View>
 
       <View style={styles.searchContainer}>
@@ -390,9 +418,20 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  supportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  supportBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   searchContainer: {
     paddingHorizontal: 16,

@@ -102,7 +102,7 @@ export default function OrdersScreen() {
           <View style={styles.actionButtons}>
             <Pressable 
               style={[styles.actionBtn, { borderColor: theme.primary }]} 
-              onPress={() => router.push({ pathname: '/(user)/(tabs)/chat', params: { vendorId: item.vendor?.userId, vendorName: item.vendor?.name } })}
+              onPress={() => router.push({ pathname: '/(user)/(tabs)/chat', params: { orderId: item.id, vendorId: item.vendor?.userId, vendorName: item.vendor?.name } })}
             >
               <ThemedText style={[styles.actionBtnText, { color: theme.primary }]}>Chat</ThemedText>
             </Pressable>
