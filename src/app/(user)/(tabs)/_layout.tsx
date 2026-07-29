@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 
 export default function UserTabLayout() {
   const theme = useTheme();
@@ -12,12 +12,23 @@ export default function UserTabLayout() {
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textSecondary,
         tabBarStyle: {
+          position: 'absolute',
           backgroundColor: theme.card,
-          borderTopColor: theme.border,
-          height: Platform.OS === 'ios' ? 88 : 60,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-          paddingTop: 8,
+          borderTopWidth: 0,
+          bottom: 24,
+          left: 24,
+          right: 24,
+          elevation: 10,
+          height: 64,
+          borderRadius: 32,
+          paddingBottom: 0,
+          paddingTop: 0,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.15,
+          shadowRadius: 20,
         },
+        tabBarShowLabel: false,
         headerStyle: {
           backgroundColor: theme.background,
         },
@@ -29,35 +40,90 @@ export default function UserTabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <Ionicons name="home" size={24} color={color} />,
+          tabBarIcon: ({ focused, color }) => (
+            <View style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: focused ? theme.primary + '20' : 'transparent',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Ionicons name={focused ? "home" : "home-outline"} size={24} color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="feed"
         options={{
           title: 'Feed',
-          tabBarIcon: ({ color }) => <Ionicons name="images" size={24} color={color} />,
+          tabBarIcon: ({ focused, color }) => (
+            <View style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: focused ? theme.primary + '20' : 'transparent',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Ionicons name={focused ? "images" : "images-outline"} size={24} color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="orders"
         options={{
           title: 'Orders',
-          tabBarIcon: ({ color }) => <Ionicons name="receipt" size={24} color={color} />,
+          tabBarIcon: ({ focused, color }) => (
+            <View style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: focused ? theme.primary + '20' : 'transparent',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Ionicons name={focused ? "receipt" : "receipt-outline"} size={24} color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
           title: 'Chat',
-          tabBarIcon: ({ color }) => <Ionicons name="chatbubbles" size={24} color={color} />,
+          tabBarIcon: ({ focused, color }) => (
+            <View style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: focused ? theme.primary + '20' : 'transparent',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Ionicons name={focused ? "chatbubbles" : "chatbubbles-outline"} size={24} color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} />,
+          tabBarIcon: ({ focused, color }) => (
+            <View style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: focused ? theme.primary + '20' : 'transparent',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Ionicons name={focused ? "person" : "person-outline"} size={24} color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen

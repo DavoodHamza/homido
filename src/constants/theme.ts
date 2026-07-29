@@ -9,24 +9,24 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    primary: '#FF7A00',
-    background: '#FFF5EB',
-    card: '#FDF0DD',
-    text: '#1E1E24',
-    textSecondary: '#60646C',
-    accent: '#FFB800',
-    border: '#EADFCF',
+    primary: '#4A6D50', // Premium Rich Sage
+    background: '#F9F9F9', // Crisp modern off-white
+    card: '#FFFFFF', // Pure white for cards to pop
+    text: '#1A1A1A', // Sharp dark contrast
+    textSecondary: '#8E8E93', // Clean gray
+    accent: '#4A6D50',
+    border: '#E5E5EA', // Subtle borders
     error: '#FF3B30',
     success: '#34C759',
   },
   dark: {
-    primary: '#FF7A00',
-    background: '#000000',
-    card: '#121214',
-    text: '#FFF5EB',
-    textSecondary: '#B0B4BA',
-    accent: '#FFB800',
-    border: '#1C1C1E',
+    primary: '#668C6D', // Lighter sage for dark mode
+    background: '#121212', // Standard deep dark mode
+    card: '#1C1C1E', // Elevated dark card
+    text: '#FFFFFF',
+    textSecondary: '#98989D',
+    accent: '#668C6D',
+    border: '#2C2C2E',
     error: '#FF453A',
     success: '#32D74B',
   },

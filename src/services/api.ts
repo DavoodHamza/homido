@@ -155,6 +155,13 @@ export const api = {
 
   // Menu Items
   menu: {
+    getAll: (filters: { category?: string; search?: string } = {}) => {
+      const params = new URLSearchParams();
+      if (filters.category) params.append('category', filters.category);
+      if (filters.search) params.append('search', filters.search);
+      const queryString = params.toString();
+      return request(`/menu/all${queryString ? `?${queryString}` : ''}`);
+    },
     getByVendor: (vendorId: string) =>
       request(`/menu/vendor/${vendorId}`),
     create: (name: string, description: string, price: number, image: string, category: string) =>

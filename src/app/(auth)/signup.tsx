@@ -11,6 +11,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useAuthStore } from '@/hooks/useAuthStore';
+import { useThemeStore } from '@/hooks/useThemeStore';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { router } from 'expo-router';
@@ -21,6 +22,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function SignupScreen() {
   const { login } = useAuthStore();
   const theme = useTheme();
+  const { themeMode } = useThemeStore();
+  const isLight = themeMode === 'light';
 
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -58,7 +61,7 @@ export default function SignupScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background === '#FFF5EB' ? '#FCFBF9' : '#0B0B0C' }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: isLight ? '#FCFBF9' : '#0B0B0C' }]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -91,8 +94,8 @@ export default function SignupScreen() {
             style={[
               styles.card,
               {
-                backgroundColor: theme.background === '#FFF5EB' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(24, 24, 28, 0.75)',
-                borderColor: theme.background === '#FFF5EB' ? 'rgba(234, 223, 207, 0.5)' : 'rgba(255, 255, 255, 0.08)',
+                backgroundColor: isLight ? 'rgba(255, 255, 255, 0.85)' : 'rgba(24, 24, 28, 0.75)',
+                borderColor: isLight ? 'rgba(234, 223, 207, 0.5)' : 'rgba(255, 255, 255, 0.08)',
               },
             ]}
           >
@@ -102,7 +105,7 @@ export default function SignupScreen() {
             </ThemedText>
 
             {/* Modern Segmented Role Selector */}
-            <View style={[styles.roleContainer, { backgroundColor: theme.background === '#FFF5EB' ? '#F6F5F2' : '#141416', borderColor: theme.border }]}>
+            <View style={[styles.roleContainer, { backgroundColor: isLight ? '#F6F5F2' : '#141416', borderColor: theme.border }]}>
               <Pressable
                 style={[
                   styles.roleTab,
@@ -149,7 +152,7 @@ export default function SignupScreen() {
             )}
 
             {/* Name Input */}
-            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: theme.background === '#FFF5EB' ? '#F6F5F2' : '#141416' }]}>
+            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isLight ? '#F6F5F2' : '#141416' }]}>
               <Ionicons name="person-outline" size={20} color={theme.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}
@@ -162,7 +165,7 @@ export default function SignupScreen() {
             </View>
 
             {/* Phone Input */}
-            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: theme.background === '#FFF5EB' ? '#F6F5F2' : '#141416' }]}>
+            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isLight ? '#F6F5F2' : '#141416' }]}>
               <Ionicons name="call-outline" size={20} color={theme.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}
@@ -176,7 +179,7 @@ export default function SignupScreen() {
             </View>
 
             {/* Password Input */}
-            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: theme.background === '#FFF5EB' ? '#F6F5F2' : '#141416' }]}>
+            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isLight ? '#F6F5F2' : '#141416' }]}>
               <Ionicons name="lock-closed-outline" size={20} color={theme.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}

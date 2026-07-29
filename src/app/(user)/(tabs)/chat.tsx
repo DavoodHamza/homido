@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, FlatList, Pressable, TextInput, Modal, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, StyleSheet, FlatList, Pressable, TextInput, Modal, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Animated } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '@/services/api';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import { useLocalSearchParams, router } from 'expo-router';
+import { Image } from 'expo-image';
 
 export default function ChatScreen() {
   const theme = useTheme();
@@ -29,6 +30,9 @@ export default function ChatScreen() {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   
+  // Voice Mock State
+  const [isRecording, setIsRecording] = useState(false);
+  
   const messageScrollRef = useRef<ScrollView>(null);
 
   const fetchConversations = async () => {
@@ -48,7 +52,6 @@ export default function ChatScreen() {
       fetchConversations();
     }, 0);
     
-    // Set up auto-poll for recent messages every 5 seconds when chat list is open
     const interval = setInterval(fetchConversations, 5000);
     return () => {
       clearTimeout(timer);
@@ -85,7 +88,6 @@ export default function ChatScreen() {
     }
   };
 
-  // Poll conversation history when details modal is open
   useEffect(() => {
     if (!chatModalVisible || !selectedPartner) return;
     
@@ -103,18 +105,33 @@ export default function ChatScreen() {
   }, [chatModalVisible, selectedPartner]);
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedPartner) return;
+    if (!newMessage.trim() && !isRecording) return;
     
-    const textToSend = newMessage.trim();
+    // If recording, we mock sending a voice note
+    const textToSend = isRecording ? `[Voice] 0:12` : newMessage.trim();
+    
     setNewMessage('');
+    setIsRecording(false);
+
+    // Optimistic update for snappier UI
+    const optimisticMsg = {
+      id: Date.now().toString(),
+      senderId: user?.id,
+      message: textToSend,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+    setTimeout(() => messageScrollRef.current?.scrollToEnd({ animated: true }), 100);
 
     try {
       const sentMsg = await api.chat.sendMessage(selectedPartner.id, textToSend);
-      setMessages(prev => [...prev, sentMsg]);
-      setTimeout(() => messageScrollRef.current?.scrollToEnd({ animated: true }), 100);
+      // Replace optimistic message
+      setMessages(prev => prev.map(m => m.id === optimisticMsg.id ? sentMsg : m));
       fetchConversations();
     } catch (err) {
       console.error('Failed to send message:', err);
+      // Remove optimistic message on fail
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
     }
   };
 
@@ -134,11 +151,10 @@ export default function ChatScreen() {
         style={[styles.conversationCard, { borderBottomColor: theme.border }]}
       >
         <View style={styles.avatarContainer}>
-          <View style={[styles.avatar, { backgroundColor: isVendor ? theme.primary + '15' : theme.textSecondary + '15' }]}>
-            <ThemedText style={[styles.avatarText, { color: isVendor ? theme.primary : theme.text }]}>
-              {item.otherUser?.name.charAt(0).toUpperCase()}
-            </ThemedText>
-          </View>
+          <Image 
+            source={{ uri: `https://ui-avatars.com/api/?name=${item.otherUser?.name}&background=random` }} 
+            style={styles.avatar}
+          />
         </View>
         <View style={styles.messageContent}>
           <View style={styles.messageTop}>
@@ -150,7 +166,7 @@ export default function ChatScreen() {
               numberOfLines={1}
               style={[styles.lastMessage, { color: theme.textSecondary }]}
             >
-              {item.lastMessage}
+              {item.lastMessage?.startsWith('[Voice]') ? '🎙 Voice Message' : item.lastMessage}
             </ThemedText>
           </View>
         </View>
@@ -189,16 +205,16 @@ export default function ChatScreen() {
           onRefresh={fetchConversations}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="chatbubble-ellipses-outline" size={48} color={theme.textSecondary} />
+              <Ionicons name="chatbubbles-outline" size={64} color={theme.border} />
               <ThemedText style={{ color: theme.textSecondary, marginTop: 12 }}>
-                No active conversations yet.
+                No messages yet.
               </ThemedText>
             </View>
           }
         />
       )}
 
-      {/* Chat Details Modal */}
+      {/* Modern Chat Details Modal */}
       <Modal
         animationType="slide"
         visible={chatModalVisible}
@@ -206,90 +222,156 @@ export default function ChatScreen() {
           setChatModalVisible(false);
           if (openedFromExternal) {
             setOpenedFromExternal(false);
-            if (router.canGoBack()) router.back();
+            router.replace('/(user)/(tabs)/orders');
           }
         }}
       >
-        <SafeAreaView style={[styles.modalWrapper, { backgroundColor: theme.background }]}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={{ flex: 1 }}
-          >
-            {/* Modal Header */}
-            <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
-              <Pressable onPress={() => {
-                setChatModalVisible(false);
-                if (openedFromExternal) {
-                  setOpenedFromExternal(false);
-                  if (router.canGoBack()) router.back();
-                }
-              }} style={styles.backBtn}>
-                <Ionicons name="chevron-back" size={24} color={theme.primary} />
-              </Pressable>
-              <ThemedText style={styles.modalHeaderTitle}>{selectedPartner?.name}</ThemedText>
-              <View style={{ width: 40 }} />
-            </View>
+        {/* We use a slight yellow tint for the background behind the modal content */}
+        <View style={[styles.modalWrapper, { backgroundColor: '#FDF6D5' }]}>
+          <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+            <View style={[styles.modalInner, { backgroundColor: '#FFFFFF' }]}>
+              
+              {/* Premium Header */}
+              <View style={styles.modernHeader}>
+                <Pressable onPress={() => {
+                  setChatModalVisible(false);
+                  if (openedFromExternal) {
+                    setOpenedFromExternal(false);
+                    // Use replace to go back to orders tab if history is empty
+                    router.replace('/(user)/(tabs)/orders');
+                  }
+                }} style={styles.modernBackBtn}>
+                  <Ionicons name="chevron-back" size={20} color="#000" />
+                </Pressable>
+                
+                <View style={[styles.headerProfile, { flex: 1, justifyContent: 'center' }]}>
+                  <Image 
+                    source={{ uri: `https://ui-avatars.com/api/?name=${selectedPartner?.name}&background=random` }} 
+                    style={styles.headerAvatar}
+                  />
+                  <ThemedText style={styles.headerName} numberOfLines={1}>{selectedPartner?.name}</ThemedText>
+                </View>
 
-            {/* Chat Body */}
-            {messagesLoading ? (
-              <ActivityIndicator size="large" color={theme.primary} style={{ flex: 1 }} />
-            ) : (
-              <ScrollView
-                ref={messageScrollRef}
-                contentContainerStyle={styles.messagesContainer}
-                onContentSizeChange={() => messageScrollRef.current?.scrollToEnd({ animated: true })}
-              >
-                {messages.map((msg) => {
-                  const isOwn = msg.senderId === user?.id;
-                  return (
-                    <View
-                      key={msg.id}
-                      style={[
-                        styles.msgRow,
-                        isOwn ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' }
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.msgBubble,
-                          isOwn 
-                            ? { backgroundColor: theme.primary, borderBottomRightRadius: 2 } 
-                            : { backgroundColor: theme.card, borderBottomLeftRadius: 2, borderColor: theme.border, borderWidth: 0.5 }
-                        ]}
-                      >
-                        <ThemedText style={[styles.msgText, isOwn ? { color: '#FFF' } : { color: theme.text }]}>
-                          {msg.message}
-                        </ThemedText>
-                        <ThemedText style={[styles.msgTime, isOwn ? { color: '#FFF8' } : { color: theme.textSecondary }]}>
-                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </ThemedText>
-                      </View>
+                <Pressable style={styles.headerSettings}>
+                  <Ionicons name="options-outline" size={20} color="#000" />
+                  <View style={styles.notificationDot} />
+                </Pressable>
+              </View>
+
+              {/* Chat Body */}
+              {messagesLoading ? (
+                <ActivityIndicator size="large" color={theme.primary} style={{ flex: 1 }} />
+              ) : (
+                <KeyboardAvoidingView
+                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                  style={{ flex: 1 }}
+                >
+                  <ScrollView
+                    ref={messageScrollRef}
+                    contentContainerStyle={styles.messagesContainer}
+                    onContentSizeChange={() => messageScrollRef.current?.scrollToEnd({ animated: true })}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {/* Date Separator Example */}
+                    <View style={styles.dateSeparator}>
+                      <ThemedText style={styles.dateSeparatorText}>Today</ThemedText>
                     </View>
-                  );
-                })}
-              </ScrollView>
-            )}
 
-            {/* Input Footer */}
-            <View style={[styles.inputFooter, { borderTopColor: theme.border, backgroundColor: theme.card }]}>
-              <TextInput
-                placeholder="Type a message..."
-                placeholderTextColor={theme.textSecondary}
-                style={[styles.inputField, { color: theme.text, borderColor: theme.border }]}
-                value={newMessage}
-                onChangeText={setNewMessage}
-                multiline
-              />
-              <Pressable
-                onPress={handleSendMessage}
-                disabled={!newMessage.trim()}
-                style={[styles.sendBtn, { backgroundColor: newMessage.trim() ? theme.primary : theme.border }]}
-              >
-                <Ionicons name="send" size={16} color="#FFF" />
-              </Pressable>
+                    {messages.map((msg, index) => {
+                      const isOwn = msg.senderId === user?.id;
+                      const isVoice = msg.message.startsWith('[Voice]');
+                      
+                      return (
+                        <View key={msg.id} style={{ marginBottom: 16 }}>
+                          <View
+                            style={[
+                              styles.msgRow,
+                              isOwn ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' }
+                            ]}
+                          >
+                            <View
+                              style={[
+                                styles.msgBubble,
+                                isOwn 
+                                  ? { backgroundColor: '#F8D849', borderTopRightRadius: 4 } // Golden Yellow
+                                  : { backgroundColor: '#F2F2F2', borderTopLeftRadius: 4 } // Light Gray
+                              ]}
+                            >
+                              {isVoice ? (
+                                /* Voice Message UI */
+                                <View style={styles.voiceContainer}>
+                                  <Pressable style={styles.playButton}>
+                                    <Ionicons name="play" size={14} color="#000" style={{ marginLeft: 2 }} />
+                                  </Pressable>
+                                  <View style={styles.waveformMock}>
+                                    {[...Array(15)].map((_, i) => (
+                                      <View key={i} style={[styles.waveBar, { height: Math.max(4, Math.random() * 20) }]} />
+                                    ))}
+                                  </View>
+                                  <ThemedText style={styles.voiceTime}>0:12</ThemedText>
+                                </View>
+                              ) : (
+                                /* Standard Text Message */
+                                <ThemedText style={[styles.msgText, { color: '#111' }]}>
+                                  {msg.message}
+                                </ThemedText>
+                              )}
+                            </View>
+                          </View>
+                          {/* Time below message */}
+                          <ThemedText style={[styles.msgTime, isOwn ? { textAlign: 'right', marginRight: 4 } : { textAlign: 'left', marginLeft: 4 }]}>
+                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </ThemedText>
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+
+                  {/* Modern Pill Input Footer */}
+                  <View style={styles.inputFooter}>
+                    <View style={styles.pillContainer}>
+                      {isRecording ? (
+                        <View style={styles.recordingUi}>
+                          <ThemedText style={styles.recordingTime}>0:12</ThemedText>
+                          <View style={styles.waveformMock}>
+                            {[...Array(20)].map((_, i) => (
+                              <View key={i} style={[styles.waveBar, { height: Math.max(4, Math.random() * 20), backgroundColor: '#FF3B30' }]} />
+                            ))}
+                          </View>
+                          <Pressable onPress={() => setIsRecording(false)} style={styles.cancelRecord}>
+                            <Ionicons name="close-circle" size={24} color="#999" />
+                          </Pressable>
+                        </View>
+                      ) : (
+                        <TextInput
+                          placeholder="Type a message..."
+                          placeholderTextColor="#999"
+                          style={styles.pillInput}
+                          value={newMessage}
+                          onChangeText={setNewMessage}
+                          multiline
+                        />
+                      )}
+
+                      <Pressable
+                        onPress={newMessage.trim() || isRecording ? handleSendMessage : () => setIsRecording(true)}
+                        style={styles.actionCircleBtn}
+                      >
+                        <Ionicons 
+                          name={newMessage.trim() || isRecording ? "send" : "mic"} 
+                          size={18} 
+                          color="#FFF" 
+                          style={newMessage.trim() || isRecording ? { marginLeft: 2 } : {}}
+                        />
+                      </Pressable>
+                    </View>
+                  </View>
+
+                </KeyboardAvoidingView>
+              )}
             </View>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
+          </SafeAreaView>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -309,23 +391,28 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   searchContainer: {
     paddingHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
   },
   searchInput: {
     flex: 1,
-    height: 44,
+    height: 48,
     fontSize: 15,
   },
   conversationCard: {
@@ -342,12 +429,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontWeight: 'bold',
-    fontSize: 20,
+    backgroundColor: '#EEE',
   },
   messageContent: {
     flex: 1,
@@ -361,7 +443,7 @@ const styles = StyleSheet.create({
   },
   senderName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     flex: 1,
     marginRight: 8,
   },
@@ -384,70 +466,193 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 120,
   },
+  
   // Modal Styles
   modalWrapper: {
     flex: 1,
   },
-  modalHeader: {
+  modalInner: {
+    flex: 1,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    overflow: 'hidden',
+    marginTop: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -5 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  modernHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-  backBtn: {
-    padding: 6,
-  },
-  modalHeaderTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  messagesContainer: {
-    padding: 16,
-    paddingBottom: 24,
-  },
-  msgRow: {
-    flexDirection: 'row',
-    marginBottom: 14,
-  },
-  msgBubble: {
-    maxWidth: '80%',
-    padding: 12,
-    borderRadius: 16,
-  },
-  msgText: {
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  msgTime: {
-    fontSize: 10,
-    textAlign: 'right',
-    marginTop: 4,
-  },
-  inputFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderTopWidth: 0.5,
-  },
-  inputField: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 10,
-    fontSize: 15,
-  },
-  sendBtn: {
+  modernBackBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerProfile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EEE',
+  },
+  headerName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000',
+  },
+  headerSettings: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8D849', // Yellow accent button
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF3B30',
+    borderWidth: 1,
+    borderColor: '#F8D849',
+  },
+  messagesContainer: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  dateSeparator: {
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dateSeparatorText: {
+    fontSize: 12,
+    color: '#999',
+    fontWeight: '600',
+  },
+  msgRow: {
+    flexDirection: 'row',
+  },
+  msgBubble: {
+    maxWidth: '80%',
+    padding: 16,
+    borderRadius: 24,
+  },
+  msgText: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  msgTime: {
+    fontSize: 11,
+    color: '#A0A0A0',
+    marginTop: 4,
+  },
+  
+  // Voice Message Styles
+  voiceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 180,
+  },
+  playButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  waveformMock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    flex: 1,
+  },
+  waveBar: {
+    width: 3,
+    backgroundColor: '#444',
+    borderRadius: 2,
+  },
+  voiceTime: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#555',
+  },
+
+  // Pill Input Footer
+  inputFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    paddingBottom: Platform.OS === 'ios' ? 30 : 20,
+    backgroundColor: '#FFF',
+  },
+  pillContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F7F7F7',
+    borderRadius: 30,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+  },
+  pillInput: {
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 100,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    fontSize: 15,
+    color: '#111',
+  },
+  actionCircleBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#000', // Black circle as requested
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  
+  // Recording UI
+  recordingUi: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  recordingTime: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111',
+  },
+  cancelRecord: {
+    marginLeft: 'auto',
+  }
 });

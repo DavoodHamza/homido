@@ -11,6 +11,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useAuthStore } from '@/hooks/useAuthStore';
+import { useThemeStore } from '@/hooks/useThemeStore';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { router } from 'expo-router';
@@ -21,6 +22,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function LoginScreen() {
   const { login } = useAuthStore();
   const theme = useTheme();
+  const { themeMode } = useThemeStore();
+  const isLight = themeMode === 'light';
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
@@ -54,7 +57,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background === '#FFF5EB' ? '#FCFBF9' : '#0B0B0C' }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: isLight ? '#FCFBF9' : '#0B0B0C' }]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -64,10 +67,10 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Neon Glow Accents */}
+          {/* Soft Green Glow Accents */}
           <View style={styles.neonGlowContainer}>
-            <View style={[styles.glowOrb, styles.orbLeft, { backgroundColor: '#FF7A00' }]} />
-            <View style={[styles.glowOrb, styles.orbRight, { backgroundColor: '#FFB800' }]} />
+            <View style={[styles.glowOrb, styles.orbLeft, { backgroundColor: '#96A582' }]} />
+            <View style={[styles.glowOrb, styles.orbRight, { backgroundColor: '#C2CAB1' }]} />
           </View>
 
           {/* Header */}
@@ -87,8 +90,8 @@ export default function LoginScreen() {
             style={[
               styles.card,
               {
-                backgroundColor: theme.background === '#FFF5EB' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(24, 24, 28, 0.75)',
-                borderColor: theme.background === '#FFF5EB' ? 'rgba(234, 223, 207, 0.5)' : 'rgba(255, 255, 255, 0.08)',
+                backgroundColor: isLight ? 'rgba(255, 255, 255, 0.85)' : 'rgba(24, 24, 28, 0.75)',
+                borderColor: isLight ? 'rgba(234, 223, 207, 0.5)' : 'rgba(255, 255, 255, 0.08)',
               },
             ]}
           >
@@ -98,7 +101,7 @@ export default function LoginScreen() {
             </ThemedText>
 
             {/* Input field 1 */}
-            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: theme.background === '#FFF5EB' ? '#F6F5F2' : '#141416' }]}>
+            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isLight ? '#F6F5F2' : '#141416' }]}>
               <Ionicons name="call-outline" size={20} color={theme.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}
@@ -112,7 +115,7 @@ export default function LoginScreen() {
             </View>
 
             {/* Input field 2 */}
-            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: theme.background === '#FFF5EB' ? '#F6F5F2' : '#141416' }]}>
+            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isLight ? '#F6F5F2' : '#141416' }]}>
               <Ionicons name="lock-closed-outline" size={20} color={theme.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}
@@ -155,7 +158,7 @@ export default function LoginScreen() {
             </View>
 
             {/* Modern Demo Panel */}
-            <View style={[styles.demoWrapper, { backgroundColor: theme.background === '#FFF5EB' ? 'rgba(255, 122, 0, 0.05)' : 'rgba(255, 122, 0, 0.03)' }]}>
+            <View style={[styles.demoWrapper, { backgroundColor: isLight ? 'rgba(150, 165, 130, 0.1)' : 'rgba(150, 165, 130, 0.05)' }]}>
               {['User', 'Vendor', 'Admin'].map((roleType, index) => {
                 const creds = ['9876543210', '9876543211', '9876543212'];
                 return (
@@ -291,7 +294,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     marginTop: 10,
-    shadowColor: '#FF7A00',
+    shadowColor: '#96A582',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
     shadowRadius: 16,

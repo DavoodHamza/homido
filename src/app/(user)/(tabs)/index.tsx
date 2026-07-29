@@ -97,7 +97,7 @@ export default function Home() {
   }, []);
 
   // Dynamic lists from backend
-  const [vendors, setVendors] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Selected Vendor Menu Modal
@@ -109,56 +109,34 @@ export default function Home() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      const fetchVendors = async () => {
+      const fetchProducts = async () => {
         setLoading(true);
         try {
-          const res = await api.vendors.getAll({
+          const res = await api.menu.getAll({
             category: selectedCategory,
             search: searchQuery,
-            minRating: minRating > 0 ? minRating : undefined,
-            sortBy: sortBy,
-            location: locationFilter || undefined,
           });
-          setVendors(res);
+          setProducts(res);
         } catch (err: any) {
           console.error('Failed to fetch vendors:', err);
         } finally {
           setLoading(false);
         }
       };
-      fetchVendors();
+      fetchProducts();
     }, 0);
     return () => clearTimeout(timer);
   }, [selectedCategory, searchQuery, minRating, sortBy, locationFilter]);
 
-  const openVendorMenu = async (vendor: any) => {
-    if (!isLoggedIn) {
-      Alert.alert(
-        'Sign in Required',
-        'Please sign in or create an account to view menus and place orders.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Sign In', onPress: () => router.push('/(auth)/login') },
-          { text: 'Sign Up', onPress: () => router.push('/(auth)/signup') },
-        ]
-      );
-      return;
-    }
-    setSelectedVendor(vendor);
-    setCart({});
-    setMenuModalVisible(true);
-    setMenuItems([]);
-    setMenuLoading(true);
-    try {
-      const items = await api.menu.getByVendor(vendor.id);
-      setMenuItems(items);
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Could not load menu items.');
-    } finally {
-      setMenuLoading(false);
-    }
+  
+  const [productModalVisible, setProductModalVisible] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+
+  const openProductModal = (product: any) => {
+    setSelectedProduct(product);
+    setProductModalVisible(true);
   };
+
 
   const updateCartQuantity = (item: any, delta: number) => {
     setCart((prev) => {
@@ -240,10 +218,10 @@ export default function Home() {
         {/* Header - Location */}
         <View style={styles.header}>
           <Pressable onPress={requestAndFetchLocation} style={[styles.locationContainer, { flex: 1, marginRight: 16 }]}>
-            <Ionicons name="location" size={24} color={theme.primary} />
+            <Ionicons name="location" size={24} color={theme.text} />
             <View style={{ flex: 1, marginLeft: 8 }}>
-              <ThemedText style={styles.locationTitle}>Current Location ↻</ThemedText>
-              <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }} numberOfLines={1}>
+              <ThemedText style={[styles.locationTitle, { color: theme.text, fontWeight: '800' }]}>Current Location ↻</ThemedText>
+              <ThemedText style={{ color: theme.textSecondary, fontSize: 13, fontWeight: '500' }} numberOfLines={1}>
                 {currentAddress}
               </ThemedText>
             </View>
@@ -260,128 +238,111 @@ export default function Home() {
           </View>
         </View>
 
-        {/* Search & Filter Button */}
-        <View style={styles.searchContainer}>
-          <View style={[styles.searchBar, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <Ionicons name="search" size={20} color={theme.textSecondary} style={{ marginRight: 8 }} />
-            <TextInput
-              placeholder="Search for food, chefs..."
-              placeholderTextColor={theme.textSecondary}
-              style={[styles.searchInput, { color: theme.text }]}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={18} color={theme.textSecondary} style={{ marginLeft: 8 }} />
-              </Pressable>
-            )}
-          </View>
-          <Pressable onPress={() => setMapVisible(true)} style={[styles.mapToggleBtn, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
-            <Ionicons name="map" size={20} color={theme.primary} />
-          </Pressable>
-          <Pressable onPress={openFilterModal} style={[styles.filterButton, { backgroundColor: theme.primary }]}>
-            <Ionicons name="options-outline" size={20} color="#FFF" />
-          </Pressable>
-        </View>
 
+        
         {/* Categories */}
-        <View style={styles.section}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>Quick Categories</ThemedText>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-            {CATEGORIES.map((cat) => {
-              const isSelected = selectedCategory === cat.id;
-              return (
-                <Pressable
-                  key={cat.id}
-                  onPress={() => setSelectedCategory(cat.id)}
+        <View style={{ marginTop: 16 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
+            {CATEGORIES.map((cat) => (
+              <Pressable
+                key={cat.id}
+                onPress={() => setSelectedCategory(cat.id)}
+                style={[
+                  styles.categoryPill,
+                  { backgroundColor: selectedCategory === cat.id ? theme.primary : theme.card },
+                ]}
+              >
+                <ThemedText style={{ fontSize: 16 }}>{cat.icon}</ThemedText>
+                <ThemedText
                   style={[
-                    styles.categoryItem,
-                    isSelected
-                      ? { borderColor: theme.primary, borderWidth: 2, backgroundColor: theme.card }
-                      : { borderColor: theme.border, borderWidth: 1, backgroundColor: theme.card },
+                    styles.categoryPillText,
+                    { color: selectedCategory === cat.id ? '#FFF' : theme.text },
                   ]}
                 >
-                  <ThemedText style={{ fontSize: 24, marginBottom: 4 }}>{cat.icon}</ThemedText>
-                  <ThemedText
-                    style={{
-                      fontSize: 12,
-                      color: isSelected ? theme.primary : theme.text,
-                      fontWeight: isSelected ? '600' : '400',
-                    }}
-                  >
-                    {cat.name}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
+                  {cat.name}
+                </ThemedText>
+              </Pressable>
+            ))}
           </ScrollView>
         </View>
 
-        {/* Vendor of the Month Banner */}
-        <View style={[styles.promoBanner, { backgroundColor: theme.card }]}>
-          <View style={{ flex: 1 }}>
-            <ThemedText style={{ color: theme.accent, fontWeight: 'bold', marginBottom: 4 }}>
-              VENDOR OF THE MONTH
-            </ThemedText>
-            <ThemedText type="subtitle" style={{ fontSize: 20 }}>Sarah&apos;s Sweet Delights</ThemedText>
-            <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginTop: 4 }}>
-              Award winning custom cakes
-            </ThemedText>
-          </View>
-          <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1557925923-33b251d59265?w=200&q=80' }}
-            style={styles.promoImage}
-          />
-        </View>
-
-        {/* Popular Near You */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>Kitchens Near You</ThemedText>
-            <ThemedText style={{ color: theme.primary, fontWeight: '600' }}>
-              Sort: {sortBy === 'rating' ? 'Rating' : 'Delivery Time'}
-            </ThemedText>
-          </View>
-
-          {loading ? (
-            <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
-          ) : vendors.length > 0 ? (
-            vendors.map((vendor) => (
-              <Pressable
-                key={vendor.id}
-                onPress={() => openVendorMenu(vendor)}
-                style={[styles.vendorCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-              >
-                <Image source={{ uri: vendor.image || 'https://images.unsplash.com/photo-1512152272829-e3139592d56f?w=500&q=80' }} style={styles.vendorImage} />
-                <View style={styles.vendorInfo}>
-                  <ThemedText style={{ fontWeight: 'bold', fontSize: 18 }}>{vendor.name}</ThemedText>
-                  <View style={styles.ratingBadge}>
-                    <Ionicons name="star" size={14} color={theme.accent} />
-                    <ThemedText style={{ fontSize: 12, marginLeft: 4, fontWeight: '600' }}>
-                      {Number(vendor.rating).toFixed(1)}
-                    </ThemedText>
+        {/* Hero Featured Vendor */}
+        {loading ? (
+          <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
+        ) : products.length > 0 && (
+          <View style={styles.heroSection}>
+            <Pressable onPress={() => openProductModal(products[0])}>
+              <View style={styles.heroImageContainer}>
+                <Image 
+                  source={{ uri: products[0].image || 'https://images.unsplash.com/photo-1512152272829-e3139592d56f?w=500&q=80' }} 
+                  style={styles.heroImage} 
+                />
+                {/* Modern Glassmorphic Overlay for Text */}
+                <View style={styles.heroOverlay}>
+                  <ThemedText style={styles.heroTitle}>{products[0].name}</ThemedText>
+                  <View style={styles.heroMeta}>
+                     <ThemedText style={styles.heroSubtitle}>₹{products[0].price} • {products[0].vendor?.name || 'Local Kitchen'}</ThemedText>
                   </View>
                 </View>
-                <View style={styles.vendorMeta}>
-                  <Ionicons name="time-outline" size={14} color={theme.textSecondary} />
-                  <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginLeft: 4 }}>
-                    {vendor.timeVal} mins
-                  </ThemedText>
-                  <View style={{ flex: 1 }} />
-                  <ThemedText style={{ fontSize: 12, color: theme.primary, fontWeight: '700' }}>
-                    View Menu
-                  </ThemedText>
+              </View>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Search & Action Pills */}
+        <View style={styles.modernActionRow}>
+          <Pressable onPress={openFilterModal} style={[styles.modernPill, { backgroundColor: theme.card }]}>
+             <Ionicons name="options-outline" size={16} color={theme.text} />
+             <ThemedText style={[styles.modernPillText, { color: theme.text }]}>Filters</ThemedText>
+          </Pressable>
+          <Pressable onPress={() => setMapVisible(true)} style={[styles.modernPill, { backgroundColor: theme.card }]}>
+             <Ionicons name="map-outline" size={16} color={theme.text} />
+             <ThemedText style={[styles.modernPillText, { color: theme.text }]}>Map</ThemedText>
+          </Pressable>
+        </View>
+
+        {/* Popular Dishes List */}
+        <View style={styles.section}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>Popular Dishes</ThemedText>
+          
+          {products.length > 0 ? (
+            products.map((vendor) => (
+              <Pressable
+                key={vendor.id}
+                onPress={() => openProductModal(vendor)}
+              >
+                <View style={[styles.modernProductCard, { backgroundColor: theme.card }]}>
+                  <Image source={{ uri: vendor.image || 'https://images.unsplash.com/photo-1512152272829-e3139592d56f?w=500&q=80' }} style={styles.modernProductImage} />
+                  
+                  <View style={styles.modernProductInfo}>
+                    <View>
+                      <ThemedText style={[styles.modernProductTitle, { color: theme.text }]} numberOfLines={2}>{vendor.name}</ThemedText>
+                      {vendor.vendor && (
+                        <ThemedText style={{ color: theme.textSecondary, fontSize: 12, marginTop: 4, fontWeight: '600' }}>
+                           from {vendor.vendor.name}
+                        </ThemedText>
+                      )}
+                    </View>
+                    
+                    <View style={styles.modernProductBottom}>
+                      <ThemedText style={{ fontSize: 18, fontWeight: '800', color: theme.text }}>
+                        ₹{vendor.price}
+                      </ThemedText>
+                      
+                      <Pressable 
+                        onPress={() => openProductModal(vendor)} 
+                        style={[styles.modernAddButton, { backgroundColor: theme.primary + '20' }]}
+                      >
+                        <ThemedText style={{ color: theme.primary, fontWeight: '800', fontSize: 13 }}>ADD</ThemedText>
+                        <Ionicons name="add" size={16} color={theme.primary} />
+                      </Pressable>
+                    </View>
+                  </View>
                 </View>
               </Pressable>
             ))
           ) : (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="restaurant-outline" size={48} color={theme.textSecondary} />
-              <ThemedText style={{ color: theme.textSecondary, marginTop: 12 }}>
-                No kitchens match your filter.
-              </ThemedText>
-            </View>
+            null
           )}
         </View>
       </ScrollView>
@@ -544,7 +505,7 @@ export default function Home() {
             }}
             showsUserLocation
           >
-            {vendors.map((vendor) => {
+            {products.map((vendor) => {
               const vLat = Number(vendor.latitude);
               const vLng = Number(vendor.longitude);
               if (isNaN(vLat) || isNaN(vLng)) return null;
@@ -559,7 +520,7 @@ export default function Home() {
                   <Callout
                     onPress={() => {
                       setMapVisible(false);
-                      openVendorMenu(vendor);
+                      openProductModal(vendor);
                     }}
                   >
                     <View style={styles.calloutContainer}>
@@ -573,10 +534,103 @@ export default function Home() {
               );
             })}
           </MapView>
-        </SafeAreaView>
+        
+      {/* Floating Cart Button */}
+      {Object.values(cart).length > 0 && (
+        <Pressable
+          style={[styles.floatingCartBtn, { backgroundColor: theme.primary }]}
+          onPress={() => setMenuModalVisible(true)}
+        >
+          <Ionicons name="cart" size={24} color="#FFF" />
+          <View style={styles.cartBadge}>
+            <ThemedText style={{ color: theme.primary, fontSize: 12, fontWeight: 'bold' }}>
+              {Object.values(cart).reduce((sum, c) => sum + c.quantity, 0)}
+            </ThemedText>
+          </View>
+        </Pressable>
+      )}
+
+    </SafeAreaView>
       </Modal>
 
-      {/* Menu / Checkout Drawer Modal */}
+      
+      {/* Product Details Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={productModalVisible}
+        onRequestClose={() => setProductModalVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setProductModalVisible(false)}>
+          <Pressable style={[styles.menuModalContainer, { backgroundColor: theme.card, padding: 24 }]} onPress={(e) => e.stopPropagation()}>
+            {selectedProduct && (
+              <View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <View style={{ flex: 1, marginRight: 16 }}>
+                    <ThemedText style={{ fontSize: 22, fontWeight: 'bold' }}>{selectedProduct.name}</ThemedText>
+                    <ThemedText style={{ color: theme.textSecondary, marginTop: 4 }}>
+                      From {selectedProduct.vendor?.name || 'Local Kitchen'}
+                    </ThemedText>
+                  </View>
+                  <Pressable onPress={() => setProductModalVisible(false)}>
+                    <Ionicons name="close" size={24} color={theme.text} />
+                  </Pressable>
+                </View>
+
+                {selectedProduct.image && (
+                  <Image 
+                    source={{ uri: selectedProduct.image }} 
+                    style={{ width: '100%', height: 200, borderRadius: 16, marginTop: 16 }} 
+                  />
+                )}
+
+                <ThemedText style={{ marginTop: 16, fontSize: 15, lineHeight: 22, color: theme.textSecondary }}>
+                  {selectedProduct.description || 'No description available for this item.'}
+                </ThemedText>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
+                  <ThemedText style={{ fontSize: 24, fontWeight: 'bold', color: theme.primary }}>
+                    ₹{selectedProduct.price}
+                  </ThemedText>
+                  <Pressable
+                    style={{ backgroundColor: theme.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+                    onPress={() => {
+                      // Check vendor consistency
+                      const currentVendorId = Object.values(cart)[0]?.item?.vendorId;
+                      if (currentVendorId && currentVendorId !== selectedProduct.vendorId) {
+                        Alert.alert(
+                          'Different Kitchen',
+                          'Your cart contains items from a different kitchen. Clear cart to add this item?',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            { 
+                              text: 'Clear Cart', 
+                              style: 'destructive', 
+                              onPress: () => {
+                                setCart({ [selectedProduct.id]: { item: selectedProduct, quantity: 1 } });
+                                setProductModalVisible(false);
+                                setMenuModalVisible(true); // Open cart drawer
+                              }
+                            }
+                          ]
+                        );
+                      } else {
+                        updateCartQuantity(selectedProduct, 1);
+                        setProductModalVisible(false);
+                        setMenuModalVisible(true); // Open cart drawer
+                      }
+                    }}
+                  >
+                    <ThemedText style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>Add to Cart</ThemedText>
+                  </Pressable>
+                </View>
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Cart / Checkout Drawer Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -587,9 +641,9 @@ export default function Home() {
           <Pressable style={[styles.menuModalContainer, { backgroundColor: theme.card }]} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
               <View>
-                <ThemedText style={styles.modalTitle}>{selectedVendor?.name}</ThemedText>
+                <ThemedText style={styles.modalTitle}>Your Cart</ThemedText>
                 <ThemedText style={{ color: theme.textSecondary, fontSize: 13, marginTop: 4 }}>
-                  {selectedVendor?.category.toUpperCase()} • ⭐️ {Number(selectedVendor?.rating).toFixed(1)}
+                  Review your items
                 </ThemedText>
               </View>
               <Pressable onPress={() => setMenuModalVisible(false)} style={styles.closeBtn}>
@@ -597,100 +651,149 @@ export default function Home() {
               </Pressable>
             </View>
 
-            {menuLoading ? (
-              <ActivityIndicator size="large" color={theme.primary} style={{ marginVertical: 40 }} />
-            ) : (
-              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
-                {menuItems.length > 0 ? (
-                  menuItems.map((item) => {
-                    const quantity = cart[item.id]?.quantity || 0;
-                    return (
-                      <View key={item.id} style={[styles.menuItemRow, { borderBottomColor: theme.border }]}>
-                        {item.image && <Image source={{ uri: item.image }} style={styles.menuItemImage} />}
-                        <View style={{ flex: 1, marginLeft: item.image ? 12 : 0 }}>
-                          <ThemedText style={{ fontWeight: '700', fontSize: 15 }}>{item.name}</ThemedText>
-                          {item.description && (
-                            <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
-                              {item.description}
-                            </ThemedText>
-                          )}
-                          <ThemedText style={{ color: theme.primary, fontWeight: '700', marginTop: 4 }}>
-                            ₹{item.price}
-                          </ThemedText>
-                        </View>
-
-                        {/* Quantity Controls */}
-                        <View style={styles.quantityControls}>
-                          {quantity > 0 ? (
-                            <>
-                              <Pressable
-                                onPress={() => updateCartQuantity(item, -1)}
-                                style={[styles.qtyBtn, { backgroundColor: theme.border }]}
-                              >
-                                <Ionicons name="remove" size={16} color={theme.text} />
-                              </Pressable>
-                              <ThemedText style={{ marginHorizontal: 12, fontWeight: 'bold' }}>{quantity}</ThemedText>
-                              <Pressable
-                                onPress={() => updateCartQuantity(item, 1)}
-                                style={[styles.qtyBtn, { backgroundColor: theme.primary }]}
-                              >
-                                <Ionicons name="add" size={16} color="#FFF" />
-                              </Pressable>
-                            </>
-                          ) : (
-                            <Pressable
-                              onPress={() => updateCartQuantity(item, 1)}
-                              style={[styles.addBtn, { borderColor: theme.primary }]}
-                            >
-                              <ThemedText style={{ color: theme.primary, fontWeight: '700', fontSize: 13 }}>
-                                ADD
-                              </ThemedText>
-                            </Pressable>
-                          )}
-                        </View>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
+              {Object.values(cart).length > 0 ? (
+                Object.values(cart).map((c) => {
+                  const item = c.item;
+                  const quantity = c.quantity;
+                  return (
+                    <View key={item.id} style={[styles.menuItemRow, { borderBottomColor: theme.border }]}>
+                      {item.image && <Image source={{ uri: item.image }} style={styles.menuItemImage} />}
+                      <View style={{ flex: 1, marginLeft: item.image ? 12 : 0 }}>
+                        <ThemedText style={{ fontWeight: '700', fontSize: 15 }}>{item.name}</ThemedText>
+                        <ThemedText style={{ color: theme.primary, fontWeight: '700', marginTop: 4 }}>
+                          ₹{item.price}
+                        </ThemedText>
                       </View>
-                    );
-                  })
-                ) : (
-                  <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                    <Ionicons name="fast-food-outline" size={40} color={theme.textSecondary} />
-                    <ThemedText style={{ color: theme.textSecondary, marginTop: 10 }}>
-                      No menu items listed yet.
-                    </ThemedText>
-                  </View>
-                )}
-              </ScrollView>
-            )}
 
-            {/* Cart checkout footer */}
-            {Object.keys(cart).length > 0 && (
-              <View style={[styles.cartSummary, { borderTopColor: theme.border }]}>
-                <View>
-                  <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }}>Total Price</ThemedText>
-                  <ThemedText style={{ fontSize: 20, fontWeight: '800', color: theme.text }}>
+                      {/* Quantity Controls */}
+                      <View style={styles.quantityControls}>
+                        <Pressable
+                          onPress={() => updateCartQuantity(item, -1)}
+                          style={[styles.qtyBtn, { backgroundColor: theme.border }]}
+                        >
+                          <Ionicons name="remove" size={16} color={theme.text} />
+                        </Pressable>
+                        <ThemedText style={{ marginHorizontal: 12, fontWeight: 'bold' }}>{quantity}</ThemedText>
+                        <Pressable
+                          onPress={() => updateCartQuantity(item, 1)}
+                          style={[styles.qtyBtn, { backgroundColor: theme.primary }]}
+                        >
+                          <Ionicons name="add" size={16} color="#FFF" />
+                        </Pressable>
+                      </View>
+                    </View>
+                  );
+                })
+              ) : (
+                <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                  <Ionicons name="cart-outline" size={40} color={theme.textSecondary} />
+                  <ThemedText style={{ color: theme.textSecondary, marginTop: 10 }}>
+                    Your cart is empty.
+                  </ThemedText>
+                </View>
+              )}
+            </ScrollView>
+
+            {Object.values(cart).length > 0 && (
+              <View style={[styles.checkoutFooter, { borderTopColor: theme.border }]}>
+                <View style={styles.checkoutTotalRow}>
+                  <ThemedText style={{ fontSize: 16, fontWeight: 'bold' }}>Total:</ThemedText>
+                  <ThemedText style={{ fontSize: 20, fontWeight: 'bold', color: theme.primary }}>
                     ₹{getCartTotal()}
                   </ThemedText>
                 </View>
                 <Pressable
-                  onPress={handlePlaceOrder}
-                  style={[styles.placeOrderBtn, { backgroundColor: theme.primary }]}
+                  style={[styles.checkoutBtn, { backgroundColor: theme.primary }]}
+                  onPress={() => {
+                     // Since cart items are checked to be from the same vendor, we can safely take the first item's vendorId
+                     const vendorId = Object.values(cart)[0]?.item?.vendorId;
+                     if (vendorId) {
+                       // We need to temporarily set selectedVendor for handlePlaceOrder
+                       setSelectedVendor({ id: vendorId });
+                       setTimeout(handlePlaceOrder, 100);
+                     }
+                  }}
                   disabled={loading}
                 >
-                  <ThemedText style={{ color: '#FFF', fontWeight: 'bold', fontSize: 15 }}>
-                    {loading ? 'Placing Order...' : 'Place Order'}
-                  </ThemedText>
-                  <Ionicons name="arrow-forward" size={18} color="#FFF" style={{ marginLeft: 8 }} />
+                  {loading ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <ThemedText style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>Place Order</ThemedText>
+                  )}
                 </Pressable>
               </View>
             )}
           </Pressable>
         </Pressable>
       </Modal>
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+
+  floatingCartBtn: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 100,
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#FFF',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkoutFooter: {
+    paddingTop: 16,
+    marginTop: 16,
+  },
+  checkoutTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  checkoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    height: 50,
+    borderRadius: 12,
+  },
+
+
+  categoryPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    gap: 8,
+  },
+  categoryPillText: {
+    fontWeight: '700',
+    fontSize: 14,
+  },
+
   container: {
     flex: 1,
   },
@@ -767,12 +870,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   categoryItem: {
-    width: 80,
-    height: 90,
-    borderRadius: 16,
+    width: 90,
+    height: 110,
+    borderRadius: 45, // Pill shape
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 16,
   },
   promoBanner: {
     flexDirection: 'row',
@@ -789,14 +892,15 @@ const styles = StyleSheet.create({
     marginLeft: 16,
   },
   vendorCard: {
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: 36, // Large rounded corners like the image
+    borderWidth: 0,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: 32,
+    backgroundColor: '#FAF7F2',
   },
   vendorImage: {
     width: '100%',
-    height: 180,
+    height: 280, // Taller image like the image
   },
   vendorInfo: {
     flexDirection: 'row',
@@ -1005,5 +1109,112 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 6,
     textDecorationLine: 'underline',
+  },
+
+  heroSection: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  heroImageContainer: {
+    borderRadius: 40,
+    overflow: 'hidden',
+    height: 400,
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+  },
+  heroOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 24,
+    paddingTop: 80,
+    backgroundColor: 'rgba(244,240,230,0.85)',
+  },
+  heroTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#33372B', // Dark Olive
+    marginBottom: 4,
+    letterSpacing: -1,
+  },
+  heroMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  heroSubtitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#788267',
+  },
+  modernActionRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginBottom: 24,
+    gap: 12,
+  },
+  modernPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 54,
+    borderRadius: 27,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  modernPillText: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  modernProductCard: {
+    flexDirection: 'row',
+    padding: 12,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  modernProductImage: {
+    width: 110,
+    height: 110,
+    borderRadius: 16,
+    backgroundColor: '#F0F0F0',
+  },
+  modernProductInfo: {
+    flex: 1,
+    marginLeft: 16,
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  modernProductTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    lineHeight: 22,
+  },
+  modernProductBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  modernAddButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 4,
   },
 });
