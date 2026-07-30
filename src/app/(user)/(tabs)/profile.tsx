@@ -1,15 +1,17 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, Pressable, Image, Alert, ActivityIndicator } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import { api } from '@/services/api';
 
 const MENU_ITEMS = [
   { id: '1', icon: 'heart-outline' as const, label: 'Favorites', badge: '12' },
-  { id: '2', icon: 'location-outline' as const, label: 'Saved Addresses' },
+  { id: '2', icon: 'location-outline' as const, label: 'Saved Addresses', route: '/(user)/address-modal' },
   { id: '3', icon: 'card-outline' as const, label: 'Payment Methods' },
   { id: '4', icon: 'notifications-outline' as const, label: 'Notifications', badge: '3' },
   { id: '5', icon: 'star-outline' as const, label: 'My Reviews' },
@@ -24,18 +26,57 @@ const SETTINGS_ITEMS = [
 
 export default function ProfileScreen() {
   const theme = useTheme();
-  const { logout, user } = useAuthStore();
+  const { logout, user, updateUser } = useAuthStore();
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handlePickImage = async () => {
+    const lib = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (lib.status !== 'granted') {
+      Alert.alert('Permission Required', 'Photo library access is needed to pick an image.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.length) return;
+
+    const asset = result.assets[0];
+    setIsUploading(true);
+
+    try {
+      const mimeType = asset.mimeType || 'image/jpeg';
+      const serverUrl = await api.upload.image(asset.uri, asset.fileName ?? undefined, mimeType);
+      
+      await api.users.update({ profileImage: serverUrl });
+      updateUser({ profileImage: serverUrl });
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert('Upload Failed', err.message || 'Could not upload profile picture.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Profile Header */}
         <View style={styles.profileHeader}>
-          <View style={[styles.avatarLarge, { backgroundColor: theme.primary }]}>
-            <ThemedText style={styles.avatarText}>
-              {user?.name ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'U'}
-            </ThemedText>
-          </View>
+          <Pressable onPress={handlePickImage} style={[styles.avatarLarge, { backgroundColor: theme.primary, overflow: 'hidden' }]}>
+            {isUploading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : user?.profileImage ? (
+              <Image source={{ uri: user.profileImage }} style={{ width: '100%', height: '100%' }} />
+            ) : (
+              <ThemedText style={styles.avatarText}>
+                {user?.name ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'U'}
+              </ThemedText>
+            )}
+          </Pressable>
           <View style={styles.profileInfo}>
             <ThemedText style={styles.profileName}>{user?.name || 'User'}</ThemedText>
             <ThemedText style={[styles.profilePhone, { color: theme.textSecondary }]}>{user?.phoneNumber || ''}</ThemedText>
@@ -69,6 +110,7 @@ export default function ProfileScreen() {
             <Pressable
               key={item.id}
               style={[styles.menuItem, index < MENU_ITEMS.length - 1 && { borderBottomWidth: 0.5, borderBottomColor: theme.border }]}
+              onPress={() => item.route ? router.push(item.route as any) : null}
             >
               <View style={styles.menuLeft}>
                 <View style={[styles.menuIconBg, { backgroundColor: theme.primary + '15' }]}>

@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View, ActivityIndicator, Alert, Dimensions, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import RazorpayCheckout from 'react-native-razorpay';
 
 // react-native-maps doesn't support web — conditionally import for native only
 let MapView: any;
@@ -76,7 +77,7 @@ export default function Home() {
         const item = geocoded[0];
         const readable = [item.district, item.city, item.subregion].filter(Boolean).join(', ');
         setCurrentAddress(readable || 'Signature Towers, Hitech City');
-        
+
         // Use city or subregion/district as query filter keyword
         const queryKeyword = item.district || item.city || item.subregion || '';
         setLocationFilter(queryKeyword);
@@ -128,7 +129,7 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [selectedCategory, searchQuery, minRating, sortBy, locationFilter]);
 
-  
+
   const [productModalVisible, setProductModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 
@@ -179,18 +180,50 @@ export default function Home() {
     const cartItems = Object.values(cart);
     if (cartItems.length === 0) return;
 
+    if (!user?.addressLocation || !user?.addressPhone) {
+      setMenuModalVisible(false);
+      Alert.alert(
+        'Address Required',
+        'Please add your delivery address and contact number before placing an order.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Add Address', onPress: () => router.push('/(user)/address-modal' as any) },
+        ]
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const itemsPayload = cartItems.map((c) => ({
         menuItemId: c.item.id,
         quantity: c.quantity,
       }));
-      await api.orders.create(selectedVendor.id, itemsPayload);
-      setMenuModalVisible(false);
-      setCart({});
-      Alert.alert('Success', 'Your order has been placed successfully!', [
-        { text: 'OK', onPress: () => router.replace('/(user)/(tabs)/orders') },
-      ]);
+      const orderRes = await api.orders.create(selectedVendor.id, itemsPayload);
+      
+      const options = {
+        description: 'Homido Order Payment',
+        image: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=200&q=80',
+        currency: 'INR',
+        key: 'rzp_test_TJcEIObFUIvYfC',
+        amount: Math.round(getCartTotal() * 100),
+        name: 'Homido',
+        order_id: orderRes.razorpayOrderId,
+        theme: { color: theme.primary }
+      };
+
+      try {
+        const paymentData = await RazorpayCheckout.open(options);
+        // Verify payment
+        await api.orders.verifyPayment(orderRes.id, paymentData);
+        setMenuModalVisible(false);
+        setCart({});
+        Alert.alert('Success', 'Your order has been placed successfully!', [
+          { text: 'OK', onPress: () => router.replace('/(user)/(tabs)/orders') },
+        ]);
+      } catch (error: any) {
+        Alert.alert('Payment Failed', `Payment could not be completed. Order pending.`);
+      }
     } catch (err: any) {
       Alert.alert('Checkout Failed', err.message || 'Could not place order.');
     } finally {
@@ -198,7 +231,7 @@ export default function Home() {
     }
   };
 
-   const openFilterModal = () => {
+  const openFilterModal = () => {
     setTempSortBy(sortBy);
     setTempMinRating(minRating);
     setTempLocationFilter(locationFilter);
@@ -216,7 +249,7 @@ export default function Home() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Header - Location */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Pressable onPress={requestAndFetchLocation} style={[styles.locationContainer, { flex: 1, marginRight: 16 }]}>
             <Ionicons name="location" size={24} color={theme.text} />
             <View style={{ flex: 1, marginLeft: 8 }}>
@@ -230,18 +263,22 @@ export default function Home() {
             <Pressable onPress={toggleTheme} style={{ padding: 8, marginRight: 4 }}>
               <Ionicons name={themeMode === 'dark' ? 'sunny' : 'moon'} size={22} color={theme.text} />
             </Pressable>
-            <View style={styles.profileButton}>
+            <Pressable 
+            style={[styles.profileButton, { backgroundColor: theme.primary }]}
+            onPress={() => router.push('/(user)/(tabs)/profile')}
+          >
+            {user?.profileImage ? (
+              <Image source={{ uri: user.profileImage }} style={{ width: 36, height: 36, borderRadius: 18 }} />
+            ) : (
               <ThemedText style={{ color: '#FFF', fontWeight: 'bold' }}>
                 {user?.name ? user.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase() : 'DK'}
               </ThemedText>
-            </View>
+            )}
+          </Pressable>
           </View>
         </View>
-
-
-        
         {/* Categories */}
-        <View style={{ marginTop: 16 }}>
+        <View style={{ marginTop: 16, marginBottom: 24 }}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
             {CATEGORIES.map((cat) => (
               <Pressable
@@ -271,17 +308,23 @@ export default function Home() {
           <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
         ) : products.length > 0 && (
           <View style={styles.heroSection}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>Most Sold Near You</ThemedText>
+              <View style={{ backgroundColor: '#FFEDD5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                <ThemedText style={{ color: '#EA580C', fontSize: 12, fontWeight: 'bold' }}>🔥 Trending</ThemedText>
+              </View>
+            </View>
+
             <Pressable onPress={() => openProductModal(products[0])}>
               <View style={styles.heroImageContainer}>
-                <Image 
-                  source={{ uri: products[0].image || 'https://images.unsplash.com/photo-1512152272829-e3139592d56f?w=500&q=80' }} 
-                  style={styles.heroImage} 
+                <Image
+                  source={require('../../../../assets/images/featured_food.png')}
+                  style={styles.heroImage}
                 />
-                {/* Modern Glassmorphic Overlay for Text */}
                 <View style={styles.heroOverlay}>
                   <ThemedText style={styles.heroTitle}>{products[0].name}</ThemedText>
                   <View style={styles.heroMeta}>
-                     <ThemedText style={styles.heroSubtitle}>₹{products[0].price} • {products[0].vendor?.name || 'Local Kitchen'}</ThemedText>
+                    <ThemedText style={styles.heroSubtitle}>₹{products[0].price} • {products[0].vendor?.name || 'Local Kitchen'}</ThemedText>
                   </View>
                 </View>
               </View>
@@ -292,19 +335,19 @@ export default function Home() {
         {/* Search & Action Pills */}
         <View style={styles.modernActionRow}>
           <Pressable onPress={openFilterModal} style={[styles.modernPill, { backgroundColor: theme.card }]}>
-             <Ionicons name="options-outline" size={16} color={theme.text} />
-             <ThemedText style={[styles.modernPillText, { color: theme.text }]}>Filters</ThemedText>
+            <Ionicons name="options-outline" size={16} color={theme.text} />
+            <ThemedText style={[styles.modernPillText, { color: theme.text }]}>Filters</ThemedText>
           </Pressable>
           <Pressable onPress={() => setMapVisible(true)} style={[styles.modernPill, { backgroundColor: theme.card }]}>
-             <Ionicons name="map-outline" size={16} color={theme.text} />
-             <ThemedText style={[styles.modernPillText, { color: theme.text }]}>Map</ThemedText>
+            <Ionicons name="map-outline" size={16} color={theme.text} />
+            <ThemedText style={[styles.modernPillText, { color: theme.text }]}>Map</ThemedText>
           </Pressable>
         </View>
 
         {/* Popular Dishes List */}
         <View style={styles.section}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>Popular Dishes</ThemedText>
-          
+
           {products.length > 0 ? (
             products.map((vendor) => (
               <Pressable
@@ -313,24 +356,24 @@ export default function Home() {
               >
                 <View style={[styles.modernProductCard, { backgroundColor: theme.card }]}>
                   <Image source={{ uri: vendor.image || 'https://images.unsplash.com/photo-1512152272829-e3139592d56f?w=500&q=80' }} style={styles.modernProductImage} />
-                  
+
                   <View style={styles.modernProductInfo}>
                     <View>
                       <ThemedText style={[styles.modernProductTitle, { color: theme.text }]} numberOfLines={2}>{vendor.name}</ThemedText>
                       {vendor.vendor && (
                         <ThemedText style={{ color: theme.textSecondary, fontSize: 12, marginTop: 4, fontWeight: '600' }}>
-                           from {vendor.vendor.name}
+                          from {vendor.vendor.name}
                         </ThemedText>
                       )}
                     </View>
-                    
+
                     <View style={styles.modernProductBottom}>
                       <ThemedText style={{ fontSize: 18, fontWeight: '800', color: theme.text }}>
                         ₹{vendor.price}
                       </ThemedText>
-                      
-                      <Pressable 
-                        onPress={() => openProductModal(vendor)} 
+
+                      <Pressable
+                        onPress={() => openProductModal(vendor)}
                         style={[styles.modernAddButton, { backgroundColor: theme.primary + '20' }]}
                       >
                         <ThemedText style={{ color: theme.primary, fontWeight: '800', fontSize: 13 }}>ADD</ThemedText>
@@ -534,26 +577,26 @@ export default function Home() {
               );
             })}
           </MapView>
-        
-      {/* Floating Cart Button */}
-      {Object.values(cart).length > 0 && (
-        <Pressable
-          style={[styles.floatingCartBtn, { backgroundColor: theme.primary }]}
-          onPress={() => setMenuModalVisible(true)}
-        >
-          <Ionicons name="cart" size={24} color="#FFF" />
-          <View style={styles.cartBadge}>
-            <ThemedText style={{ color: theme.primary, fontSize: 12, fontWeight: 'bold' }}>
-              {Object.values(cart).reduce((sum, c) => sum + c.quantity, 0)}
-            </ThemedText>
-          </View>
-        </Pressable>
-      )}
 
-    </SafeAreaView>
+          {/* Floating Cart Button */}
+          {Object.values(cart).length > 0 && (
+            <Pressable
+              style={[styles.floatingCartBtn, { backgroundColor: theme.primary }]}
+              onPress={() => setMenuModalVisible(true)}
+            >
+              <Ionicons name="cart" size={24} color="#FFF" />
+              <View style={styles.cartBadge}>
+                <ThemedText style={{ color: theme.primary, fontSize: 12, fontWeight: 'bold' }}>
+                  {Object.values(cart).reduce((sum, c) => sum + c.quantity, 0)}
+                </ThemedText>
+              </View>
+            </Pressable>
+          )}
+
+        </SafeAreaView>
       </Modal>
 
-      
+
       {/* Product Details Modal */}
       <Modal
         animationType="slide"
@@ -578,9 +621,9 @@ export default function Home() {
                 </View>
 
                 {selectedProduct.image && (
-                  <Image 
-                    source={{ uri: selectedProduct.image }} 
-                    style={{ width: '100%', height: 200, borderRadius: 16, marginTop: 16 }} 
+                  <Image
+                    source={{ uri: selectedProduct.image }}
+                    style={{ width: '100%', height: 200, borderRadius: 16, marginTop: 16 }}
                   />
                 )}
 
@@ -603,9 +646,9 @@ export default function Home() {
                           'Your cart contains items from a different kitchen. Clear cart to add this item?',
                           [
                             { text: 'Cancel', style: 'cancel' },
-                            { 
-                              text: 'Clear Cart', 
-                              style: 'destructive', 
+                            {
+                              text: 'Clear Cart',
+                              style: 'destructive',
                               onPress: () => {
                                 setCart({ [selectedProduct.id]: { item: selectedProduct, quantity: 1 } });
                                 setProductModalVisible(false);
@@ -706,13 +749,13 @@ export default function Home() {
                 <Pressable
                   style={[styles.checkoutBtn, { backgroundColor: theme.primary }]}
                   onPress={() => {
-                     // Since cart items are checked to be from the same vendor, we can safely take the first item's vendorId
-                     const vendorId = Object.values(cart)[0]?.item?.vendorId;
-                     if (vendorId) {
-                       // We need to temporarily set selectedVendor for handlePlaceOrder
-                       setSelectedVendor({ id: vendorId });
-                       setTimeout(handlePlaceOrder, 100);
-                     }
+                    // Since cart items are checked to be from the same vendor, we can safely take the first item's vendorId
+                    const vendorId = Object.values(cart)[0]?.item?.vendorId;
+                    if (vendorId) {
+                      // We need to temporarily set selectedVendor for handlePlaceOrder
+                      setSelectedVendor({ id: vendorId });
+                      setTimeout(handlePlaceOrder, 100);
+                    }
                   }}
                   disabled={loading}
                 >
@@ -806,6 +849,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+    padding: 12,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
   },
   locationContainer: {
     flexDirection: 'row',
@@ -824,9 +876,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#FF7A00',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -1113,12 +1165,12 @@ const styles = StyleSheet.create({
 
   heroSection: {
     paddingHorizontal: 16,
-    marginBottom: 24,
+    marginBottom: 32,
   },
   heroImageContainer: {
-    borderRadius: 40,
+    borderRadius: 24,
     overflow: 'hidden',
-    height: 400,
+    height: 280,
     position: 'relative',
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.05)',
@@ -1134,24 +1186,24 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 24,
     paddingTop: 80,
-    backgroundColor: 'rgba(244,240,230,0.85)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
   heroTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
-    color: '#33372B', // Dark Olive
+    color: '#FFFFFF',
     marginBottom: 4,
-    letterSpacing: -1,
+    letterSpacing: -0.5,
+  },
+  heroSubtitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#E5E7EB',
   },
   heroMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-  },
-  heroSubtitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#788267',
   },
   modernActionRow: {
     flexDirection: 'row',

@@ -196,6 +196,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ vendorId, items }),
       }),
+    verifyPayment: (orderId: string, paymentData: any) =>
+      request(`/orders/${orderId}/verify-payment`, {
+        method: 'POST',
+        body: JSON.stringify(paymentData),
+      }),
     get: () =>
       request('/orders'),
     updateStatus: (id: string, status: string) =>

@@ -9,26 +9,26 @@ import {
   ScrollView,
   Alert,
   Pressable,
+  Dimensions,
+  Text,
 } from 'react-native';
 import { useAuthStore } from '@/hooks/useAuthStore';
-import { useThemeStore } from '@/hooks/useThemeStore';
-import { ThemedText } from '@/components/themed-text';
-import { useTheme } from '@/hooks/use-theme';
 import { router } from 'expo-router';
 import { api } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+const { width } = Dimensions.get('window');
+const HEADER_IMAGE_HEIGHT = width * 0.75;
+
 export default function LoginScreen() {
   const { login } = useAuthStore();
-  const theme = useTheme();
-  const { themeMode } = useThemeStore();
-  const isLight = themeMode === 'light';
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   const handleLogin = async () => {
     if (!phoneNumber.trim() || !password.trim()) {
@@ -57,7 +57,12 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: isLight ? '#FCFBF9' : '#0B0B0C' }]}>
+    <View style={styles.container}>
+      {/* Back Button (Fixed at top over the image) */}
+      <Pressable onPress={() => router.back()} style={styles.backButton}>
+        <Ionicons name="chevron-back" size={24} color="#3A5A40" />
+      </Pressable>
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -66,213 +71,205 @@ export default function LoginScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          bounces={false}
         >
-          {/* Soft Green Glow Accents */}
-          <View style={styles.neonGlowContainer}>
-            <View style={[styles.glowOrb, styles.orbLeft, { backgroundColor: '#96A582' }]} />
-            <View style={[styles.glowOrb, styles.orbRight, { backgroundColor: '#C2CAB1' }]} />
-          </View>
-
-          {/* Header */}
-          <View style={styles.header}>
+          {/* Header Image Background with curve */}
+          <View style={styles.imageContainer}>
             <Image
-              source={require('../../../assets/images/logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
+              source={require('../../../assets/images/auth_header_food.png')}
+              style={styles.headerImage}
+              resizeMode="cover"
             />
-            <ThemedText style={[styles.tagline, { color: theme.textSecondary }]}>
-              Homemade food, delivered with love
-            </ThemedText>
+            <View style={styles.curveOverlay} />
           </View>
 
-          {/* Glassmorphic Form Card */}
-          <View
-            style={[
-              styles.card,
-              {
-                backgroundColor: isLight ? 'rgba(255, 255, 255, 0.85)' : 'rgba(24, 24, 28, 0.75)',
-                borderColor: isLight ? 'rgba(234, 223, 207, 0.5)' : 'rgba(255, 255, 255, 0.08)',
-              },
-            ]}
-          >
-            <ThemedText style={styles.cardTitle}>Welcome Back</ThemedText>
-            <ThemedText style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
-              Sign in to continue your culinary journey
-            </ThemedText>
-
-            {/* Input field 1 */}
-            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isLight ? '#F6F5F2' : '#141416' }]}>
-              <Ionicons name="call-outline" size={20} color={theme.primary} style={styles.inputIcon} />
-              <TextInput
-                style={[styles.input, { color: theme.text }]}
-                placeholder="Phone Number"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="phone-pad"
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                editable={!loading}
-              />
+          <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
+            {/* Header Text */}
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.title}>Welcome Back</Text>
+              <Text style={styles.subtitle}>
+                Login to your account
+              </Text>
             </View>
 
-            {/* Input field 2 */}
-            <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isLight ? '#F6F5F2' : '#141416' }]}>
-              <Ionicons name="lock-closed-outline" size={20} color={theme.primary} style={styles.inputIcon} />
-              <TextInput
-                style={[styles.input, { color: theme.text }]}
-                placeholder="Password"
-                placeholderTextColor={theme.textSecondary}
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={setPassword}
-                editable={!loading}
-              />
-              <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={theme.textSecondary}
+            {/* Form */}
+            <View style={styles.formContainer}>
+              {/* Phone Input */}
+              <View style={styles.inputWrapper}>
+                <Ionicons name="call" size={20} color="#6B8E70" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Phone Number"
+                  placeholderTextColor="#8BA989"
+                  keyboardType="phone-pad"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  editable={!loading}
                 />
+                {phoneNumber.length > 0 && (
+                  <Ionicons name="checkmark" size={20} color="#7ED957" style={styles.rightIcon} />
+                )}
+              </View>
+
+              {/* Password Input */}
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed" size={20} color="#6B8E70" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor="#8BA989"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                  editable={!loading}
+                />
+                <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.rightIcon}>
+                  <Ionicons
+                    name={showPassword ? 'eye-off' : 'eye'}
+                    size={20}
+                    color="#6B8E70"
+                  />
+                </Pressable>
+              </View>
+
+              {/* Options Row */}
+              <View style={styles.optionsRow}>
+                <Pressable
+                  style={styles.rememberMeBtn}
+                  onPress={() => setRememberMe(!rememberMe)}
+                >
+                  <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                    {rememberMe && <Ionicons name="checkmark" size={14} color="#FFF" />}
+                  </View>
+                  <Text style={styles.rememberMeText}>Remember Me</Text>
+                </Pressable>
+                <Pressable>
+                  <Text style={styles.forgotText}>Forgot Password ?</Text>
+                </Pressable>
+              </View>
+
+              {/* Login Button */}
+              <Pressable
+                onPress={handleLogin}
+                disabled={loading}
+                style={({ pressed }) => [
+                  styles.loginBtn,
+                  { opacity: pressed || loading ? 0.85 : 1 },
+                ]}
+              >
+                <Text style={styles.loginBtnText}>
+                  {loading ? 'Logging in...' : 'Login'}
+                </Text>
               </Pressable>
+
+              {/* Sign Up Link */}
+              <View style={styles.signupContainer}>
+                <Text style={styles.signupText}>Don't have account? </Text>
+                <Pressable onPress={() => router.push('/(auth)/signup')}>
+                  <Text style={styles.signupLink}>Sign up</Text>
+                </Pressable>
+              </View>
             </View>
 
-            {/* Premium Login Button */}
-            <Pressable
-              onPress={handleLogin}
-              disabled={loading}
-              style={({ pressed }) => [
-                styles.gradientBtn,
-                { backgroundColor: theme.primary, opacity: pressed || loading ? 0.85 : 1 },
-              ]}
-            >
-              <ThemedText style={styles.btnText}>
-                {loading ? 'Signing in...' : 'Sign In'}
-              </ThemedText>
-              <Ionicons name="arrow-forward" size={18} color="#FFF" />
-            </Pressable>
+            {/* Social Logins */}
+            <View style={styles.socialContainer}>
+              <View style={styles.dividerRow}>
+                <View style={styles.divider} />
+                <Text style={styles.socialText}>Or continue with</Text>
+                <View style={styles.divider} />
+              </View>
 
-            {/* Divider */}
-            <View style={styles.dividerRow}>
-              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-              <ThemedText style={[styles.dividerText, { color: theme.textSecondary }]}>quick test logins</ThemedText>
-              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+              <View style={styles.socialIconsRow}>
+                <Pressable style={styles.socialIconBtn}>
+                  <Ionicons name="logo-facebook" size={24} color="#1877F2" />
+                </Pressable>
+                <Pressable style={styles.socialIconBtn}>
+                  <Ionicons name="logo-google" size={24} color="#DB4437" />
+                </Pressable>
+                <Pressable style={styles.socialIconBtn}>
+                  <Ionicons name="logo-apple" size={24} color="#000000" />
+                </Pressable>
+              </View>
             </View>
-
-            {/* Modern Demo Panel */}
-            <View style={[styles.demoWrapper, { backgroundColor: isLight ? 'rgba(150, 165, 130, 0.1)' : 'rgba(150, 165, 130, 0.05)' }]}>
-              {['User', 'Vendor', 'Admin'].map((roleType, index) => {
-                const creds = ['9876543210', '9876543211', '9876543212'];
-                return (
-                  <Pressable
-                    key={roleType}
-                    onPress={() => {
-                      setPhoneNumber(creds[index]);
-                      setPassword('password123');
-                    }}
-                    style={[styles.demoChip, { borderColor: theme.border, backgroundColor: theme.card }]}
-                  >
-                    <Ionicons name="key" size={12} color={theme.primary} />
-                    <ThemedText style={styles.demoChipText}>{roleType}</ThemedText>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            {/* Footer */}
-            <View style={styles.footer}>
-              <ThemedText style={{ color: theme.textSecondary, fontSize: 13 }}>
-                Don&apos;t have an account?{' '}
-              </ThemedText>
-              <Pressable onPress={() => router.push('/(auth)/signup')}>
-                <ThemedText style={{ color: theme.primary, fontWeight: '700', fontSize: 13 }}>Create Account</ThemedText>
-              </Pressable>
-            </View>
-          </View>
+          </SafeAreaView>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  imageContainer: {
+    width: '100%',
+    height: HEADER_IMAGE_HEIGHT,
+    overflow: 'hidden',
+  },
+  headerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  curveOverlay: {
+    position: 'absolute',
+    bottom: -150,
+    left: -50,
+    width: width + 100,
+    height: 200,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 200,
+    borderTopRightRadius: 200,
+    transform: [{ scaleX: 1.5 }],
+  },
   safeArea: {
     flex: 1,
+    paddingHorizontal: 24,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
     paddingBottom: 40,
   },
-  neonGlowContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    pointerEvents: 'none',
-  },
-  glowOrb: {
-    position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    opacity: 0.12,
-    filter: Platform.OS === 'web' ? 'blur(100px)' : undefined, // Standard blur filter for web
-  },
-  orbLeft: {
-    top: -50,
-    left: -80,
-  },
-  orbRight: {
-    top: 200,
-    right: -80,
-  },
-  header: {
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.7)',
     alignItems: 'center',
-    marginBottom: 30,
+    justifyContent: 'center',
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    left: 20,
+    zIndex: 10,
   },
-  logo: {
-    width: 170,
-    height: 80,
+  headerTextContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+    marginTop: 20,
   },
-  tagline: {
-    marginTop: 8,
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#2A4A35',
+    marginBottom: 8,
+  },
+  subtitle: {
     fontSize: 14,
-    letterSpacing: 0.3,
-    textAlign: 'center',
+    color: '#8BA989',
+    fontWeight: '500',
   },
-  card: {
-    borderRadius: 28,
-    borderWidth: 1,
-    paddingHorizontal: 22,
-    paddingVertical: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 10,
-  },
-  cardTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: 4,
-    letterSpacing: -0.5,
-  },
-  cardSubtitle: {
-    fontSize: 13,
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 18,
+  formContainer: {
+    marginBottom: 30,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 58,
-    borderWidth: 1,
-    borderRadius: 18,
+    backgroundColor: '#EEF2EC',
+    borderRadius: 12,
+    height: 56,
     paddingHorizontal: 16,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   inputIcon: {
     marginRight: 12,
@@ -280,74 +277,119 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    height: '100%',
+    color: '#2A4A35',
     fontWeight: '500',
+    height: '100%',
   },
-  eyeBtn: {
-    padding: 6,
+  rightIcon: {
+    marginLeft: 12,
+    padding: 4,
   },
-  gradientBtn: {
-    height: 56,
-    borderRadius: 18,
+  optionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 30,
+    paddingHorizontal: 4,
+  },
+  rememberMeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 10,
-    shadowColor: '#96A582',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 4,
   },
-  btnText: {
-    color: '#FFF',
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#7ED957',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  checkboxChecked: {
+    backgroundColor: '#7ED957',
+    borderColor: '#7ED957',
+  },
+  rememberMeText: {
+    fontSize: 13,
+    color: '#8BA989',
+    fontWeight: '500',
+  },
+  forgotText: {
+    fontSize: 13,
+    color: '#2A4A35',
+    fontWeight: '600',
+  },
+  loginBtn: {
+    backgroundColor: '#3A5A40',
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: '#3A5A40',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  loginBtnText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
+  signupContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  signupText: {
+    fontSize: 13,
+    color: '#8BA989',
+    fontWeight: '500',
+  },
+  signupLink: {
+    fontSize: 13,
+    color: '#3A5A40',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  socialContainer: {
+    marginTop: 'auto',
+  },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 22,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    opacity: 0.4,
-  },
-  dividerText: {
-    marginHorizontal: 12,
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    fontWeight: '600',
-  },
-  demoWrapper: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 10,
-    borderRadius: 18,
-    gap: 8,
     marginBottom: 24,
   },
-  demoChip: {
+  divider: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 38,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 4,
+    height: 1,
+    backgroundColor: '#E0E6DD',
   },
-  demoChipText: {
-    fontSize: 12,
-    fontWeight: '700',
+  socialText: {
+    marginHorizontal: 16,
+    fontSize: 13,
+    color: '#8BA989',
+    fontWeight: '500',
   },
-  footer: {
+  socialIconsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
+    gap: 20,
+  },
+  socialIconBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
 });

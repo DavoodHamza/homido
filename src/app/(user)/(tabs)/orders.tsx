@@ -82,7 +82,7 @@ export default function OrdersScreen() {
           />
           <View style={styles.orderDetails}>
             <ThemedText style={styles.vendorName}>{item.vendor?.name || 'Kitchen'}</ThemedText>
-            <ThemedText style={[styles.orderItems, { color: theme.textSecondary }]} numberOfLines={2}>
+            <ThemedText style={[styles.orderItems, { color: theme.textSecondary }]}>
               {itemsText}
             </ThemedText>
             <View style={styles.orderMeta}>

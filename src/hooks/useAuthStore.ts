@@ -9,6 +9,10 @@ interface UserProfile {
   role: Role;
   profileImage?: string;
   address?: string;
+  addressLocation?: string;
+  addressLandmark?: string;
+  addressPhone?: string;
+  addressSecondaryPhone?: string;
 }
 
 interface AuthState {
