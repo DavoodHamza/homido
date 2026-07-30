@@ -136,7 +136,7 @@ export const api = {
 
   // Vendors
   vendors: {
-    getAll: (filters: { category?: string; search?: string; minRating?: number; sortBy?: 'rating' | 'time'; location?: string } = {}) => {
+    getAll: (filters: { category?: string; search?: string; minRating?: number; sortBy?: 'rating' | 'time'; location?: string; userLat?: number; userLng?: number } = {}) => {
       const params = new URLSearchParams();
       if (filters.category) params.append('category', filters.category);
       if (filters.search) params.append('search', filters.search);
