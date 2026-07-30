@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, Pressable, RefreshControl, ActivityIndicator, Alert, Image, Linking } from 'react-native';
+import { View, StyleSheet, FlatList, Pressable, RefreshControl, ActivityIndicator, Alert, Image, Linking, Modal, TextInput } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +15,11 @@ export default function AdminVendors() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
+
+  const [payModalVisible, setPayModalVisible] = useState(false);
+  const [payAmount, setPayAmount] = useState('');
+  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
 
   const fetchVendors = async () => {
     try {
@@ -49,6 +54,22 @@ export default function AdminVendors() {
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Could not update vendor status.');
       setLoading(false);
+    }
+  };
+
+  const handlePayVendor = async () => {
+    if (!selectedVendorId || !payAmount) return;
+    setPaying(true);
+    try {
+      await api.vendors.addPayment(selectedVendorId, parseFloat(payAmount));
+      Alert.alert('Success', 'Payment recorded successfully.');
+      setPayModalVisible(false);
+      setPayAmount('');
+      fetchVendors();
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Could not process payment.');
+    } finally {
+      setPaying(false);
     }
   };
 
@@ -100,41 +121,81 @@ export default function AdminVendors() {
         </View>
 
         <View style={styles.vendorDetails}>
-          <View style={styles.detailItem}>
-            <ThemedText style={styles.detailLabel}>Category</ThemedText>
-            <ThemedText style={styles.detailValue}>{item.category.toUpperCase()}</ThemedText>
+          {/* Main Info */}
+          <View style={styles.gridRow}>
+            <View style={styles.gridItem}>
+              <ThemedText style={styles.detailLabel}>Category</ThemedText>
+              <ThemedText style={styles.detailValue}>{item.category.toUpperCase()}</ThemedText>
+            </View>
+            <View style={styles.gridItem}>
+              <ThemedText style={styles.detailLabel}>Applied On</ThemedText>
+              <ThemedText style={styles.detailValue}>{dateFormatted}</ThemedText>
+            </View>
           </View>
-          <View style={styles.detailItem}>
-            <ThemedText style={styles.detailLabel}>Total Sales</ThemedText>
-            <ThemedText style={[styles.detailValue, { color: theme.primary }]}>{item.totalSales || 0}</ThemedText>
-          </View>
-          <View style={styles.detailItem}>
-            <ThemedText style={styles.detailLabel}>Total Earned</ThemedText>
-            <ThemedText style={[styles.detailValue, { color: theme.success }]}>₹{item.totalAmount || 0}</ThemedText>
-          </View>
-          <View style={styles.detailItem}>
-            <ThemedText style={styles.detailLabel}>Applied On</ThemedText>
-            <ThemedText style={styles.detailValue}>{dateFormatted}</ThemedText>
+          
+          {/* Financials Box */}
+          <View style={[styles.financeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary + '30' }]}>
+            <ThemedText style={{ fontWeight: 'bold', marginBottom: 12, fontSize: 14, color: theme.primary }}>Financial Overview</ThemedText>
+            
+            <View style={styles.gridRow}>
+              <View style={styles.gridItem}>
+                <ThemedText style={styles.detailLabel}>Total Sales</ThemedText>
+                <ThemedText style={[styles.detailValue, { color: theme.primary, fontSize: 16 }]}>{item.totalSales || 0}</ThemedText>
+              </View>
+              <View style={styles.gridItem}>
+                <ThemedText style={styles.detailLabel}>Total Revenue</ThemedText>
+                <ThemedText style={[styles.detailValue, { color: theme.success, fontSize: 16 }]}>₹{item.totalAmount || 0}</ThemedText>
+              </View>
+            </View>
+            
+            <View style={[styles.gridRow, { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.primary + '20' }]}>
+              <View style={styles.gridItem}>
+                <ThemedText style={styles.detailLabel}>Paid Amount</ThemedText>
+                <ThemedText style={[styles.detailValue, { fontSize: 16 }]}>₹{item.totalPaid || 0}</ThemedText>
+              </View>
+              <View style={styles.gridItem}>
+                <ThemedText style={styles.detailLabel}>Due Amount</ThemedText>
+                <ThemedText style={[styles.detailValue, { color: theme.error, fontSize: 16 }]}>₹{(item.totalAmount || 0) - (item.totalPaid || 0)}</ThemedText>
+              </View>
+            </View>
           </View>
         </View>
 
-        <View style={[styles.vendorDetails, { marginTop: 16, borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 16 }]}>
-          <ThemedText style={{ fontWeight: 'bold', marginBottom: 8, fontSize: 14 }}>Bank & Certificate Details</ThemedText>
-          <View style={styles.detailItem}>
-            <ThemedText style={styles.detailLabel}>Bank Name</ThemedText>
-            <ThemedText style={styles.detailValue}>{item.bankName || 'N/A'}</ThemedText>
+        <View style={[styles.vendorDetails, { paddingTop: 0 }]}>
+          <ThemedText style={{ fontWeight: 'bold', marginBottom: 12, fontSize: 14 }}>Contact Details</ThemedText>
+          <View style={styles.gridRow}>
+            <View style={styles.gridItem}>
+              <ThemedText style={styles.detailLabel}>Name</ThemedText>
+              <ThemedText style={styles.detailValue}>{item.contactName || 'N/A'}</ThemedText>
+            </View>
+            <View style={styles.gridItem}>
+              <ThemedText style={styles.detailLabel}>Phone</ThemedText>
+              <ThemedText style={styles.detailValue}>{item.contactPhone || 'N/A'}</ThemedText>
+            </View>
           </View>
-          <View style={styles.detailItem}>
-            <ThemedText style={styles.detailLabel}>Account Holder</ThemedText>
-            <ThemedText style={styles.detailValue}>{item.bankAccountName || 'N/A'}</ThemedText>
+        </View>
+
+        <View style={[styles.vendorDetails, { paddingTop: 0 }]}>
+          <ThemedText style={{ fontWeight: 'bold', marginBottom: 12, fontSize: 14 }}>Bank & Certificate Details</ThemedText>
+          <View style={styles.gridRow}>
+            <View style={styles.gridItem}>
+              <ThemedText style={styles.detailLabel}>Bank Name</ThemedText>
+              <ThemedText style={styles.detailValue}>{item.bankName || 'N/A'}</ThemedText>
+            </View>
+            <View style={styles.gridItem}>
+              <ThemedText style={styles.detailLabel}>Account Holder</ThemedText>
+              <ThemedText style={styles.detailValue}>{item.bankAccountName || 'N/A'}</ThemedText>
+            </View>
           </View>
-          <View style={styles.detailItem}>
-            <ThemedText style={styles.detailLabel}>Account Number</ThemedText>
-            <ThemedText style={styles.detailValue}>{item.bankAccountNumber || 'N/A'}</ThemedText>
-          </View>
-          <View style={styles.detailItem}>
-            <ThemedText style={styles.detailLabel}>IFSC Code</ThemedText>
-            <ThemedText style={styles.detailValue}>{item.bankIFSC || 'N/A'}</ThemedText>
+          <View style={[styles.gridRow, { marginTop: 12 }]}>
+            <View style={styles.gridItem}>
+              <ThemedText style={styles.detailLabel}>Account Number</ThemedText>
+              <ThemedText style={styles.detailValue}>{item.bankAccountNumber || 'N/A'}</ThemedText>
+            </View>
+            <View style={styles.gridItem}>
+              <ThemedText style={styles.detailLabel}>IFSC Code</ThemedText>
+              <ThemedText style={styles.detailValue}>{item.bankIFSC || 'N/A'}</ThemedText>
+            </View>
           </View>
           
           {item.fssaiCertificate && (
@@ -168,6 +229,20 @@ export default function AdminVendors() {
               size="sm"
               style={{ flex: 1 }}
               onPress={() => handleUpdateStatus(item.id, 'approved')}
+            />
+          </View>
+        )}
+        
+        {item.status === 'approved' && (
+          <View style={[styles.actionRow, { borderTopColor: theme.border }]}>
+            <Button
+              title="Pay Vendor"
+              size="sm"
+              style={{ flex: 1, backgroundColor: theme.primary }}
+              onPress={() => {
+                setSelectedVendorId(item.id);
+                setPayModalVisible(true);
+              }}
             />
           </View>
         )}
@@ -228,6 +303,43 @@ export default function AdminVendors() {
           }
         />
       )}
+
+      {/* Pay Modal */}
+      <Modal visible={payModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.modalHeader}>
+              <ThemedText type="subtitle">Add Payment</ThemedText>
+              <Pressable onPress={() => setPayModalVisible(false)}>
+                <Ionicons name="close" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+            
+            <ThemedText style={{ color: theme.textSecondary, marginBottom: 8, fontSize: 13 }}>Amount (₹)</ThemedText>
+            <TextInput
+              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              value={payAmount}
+              onChangeText={setPayAmount}
+              placeholder="e.g. 1500"
+              placeholderTextColor={theme.textSecondary}
+              keyboardType="number-pad"
+            />
+
+            <Pressable 
+              style={[styles.saveBtn, { backgroundColor: theme.primary, opacity: paying ? 0.7 : 1 }]}
+              onPress={handlePayVendor}
+              disabled={paying}
+            >
+              {paying ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <ThemedText style={styles.saveBtnText}>Submit Payment</ThemedText>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -288,8 +400,21 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   vendorDetails: {
-    flexDirection: 'row',
     padding: 16,
+  },
+  gridRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  gridItem: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  financeBox: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   detailItem: {
     flex: 1,
@@ -312,5 +437,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 80,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+    borderWidth: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+  },
+  saveBtn: {
+    marginTop: 24,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  saveBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

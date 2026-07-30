@@ -157,6 +157,11 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
+    addPayment: (id: string, amount: number) =>
+      request(`/vendors/admin/pay/${id}`, {
+        method: 'POST',
+        body: JSON.stringify({ amount }),
+      }),
     register: (name: string, image?: string, timeVal?: number, category?: string, location?: string, latitude?: number, longitude?: number, bankName?: string, bankAccountName?: string, bankAccountNumber?: string, bankIFSC?: string, fssaiCertificate?: string) =>
       request('/vendors/register', {
         method: 'POST',
