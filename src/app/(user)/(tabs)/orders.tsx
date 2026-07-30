@@ -86,10 +86,22 @@ export default function OrdersScreen() {
               {itemsText}
             </ThemedText>
             <View style={styles.orderMeta}>
-              <ThemedText style={styles.orderTotal}>₹{item.total}</ThemedText>
-              <View style={[styles.statusBadge, { backgroundColor: statusStyle.color + '15' }]}>
-                <View style={[styles.statusDot, { backgroundColor: statusStyle.dot }]} />
-                <ThemedText style={[styles.statusText, { color: statusStyle.color }]}>{item.status}</ThemedText>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <ThemedText style={styles.orderTotal}>₹{item.total}</ThemedText>
+                {item.deliveryCharge > 0 && (
+                  <ThemedText style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 4 }}>
+                    (+₹{item.deliveryCharge} Del.)
+                  </ThemedText>
+                )}
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={[styles.statusBadge, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
+                  <ThemedText style={[styles.statusText, { color: theme.textSecondary, textTransform: 'capitalize' }]}>{item.deliveryType || 'pickup'}</ThemedText>
+                </View>
+                <View style={[styles.statusBadge, { backgroundColor: statusStyle.color + '15' }]}>
+                  <View style={[styles.statusDot, { backgroundColor: statusStyle.dot }]} />
+                  <ThemedText style={[styles.statusText, { color: statusStyle.color }]}>{item.status}</ThemedText>
+                </View>
               </View>
             </View>
           </View>

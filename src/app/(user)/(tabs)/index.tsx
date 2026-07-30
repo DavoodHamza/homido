@@ -1,8 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState, useEffect } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View, ActivityIndicator, Alert, Dimensions, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View, ActivityIndicator, Alert, Dimensions, Platform, RefreshControl } from 'react-native';
 import { useCart } from '@/context/CartContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -104,7 +104,7 @@ export default function Home() {
   const [menuModalVisible, setMenuModalVisible] = useState(false);
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [menuLoading, setMenuLoading] = useState(false);
-  const { items: cartItems, addToCart, updateQuantity, clearCart, cartTotal, itemCount } = useCart();
+  const { items: cartItems, addToCart, updateQuantity, clearCart, cartTotal, itemCount, deliveryOptions, setDeliveryOption, globalDeliveryCharge } = useCart();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -197,6 +197,7 @@ export default function Home() {
         menuItemId: c.menuItemId,
         quantity: c.quantity,
         vendorId: c.vendorId,
+        deliveryType: deliveryOptions[c.vendorId] || 'pickup',
       }));
       const orderRes = await api.orders.cartCheckout(itemsPayload);
       
@@ -698,36 +699,64 @@ export default function Home() {
 
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
               {cartItems.length > 0 ? (
-                cartItems.map((item) => {
-                  return (
-                    <View key={item.menuItemId} style={[styles.menuItemRow, { borderBottomColor: theme.border }]}>
-                      {item.image && <Image source={{ uri: item.image }} style={styles.menuItemImage} />}
-                      <View style={{ flex: 1, marginLeft: item.image ? 12 : 0 }}>
-                        <ThemedText style={{ fontWeight: '700', fontSize: 15 }}>{item.name}</ThemedText>
-                        <ThemedText style={{ color: theme.primary, fontWeight: '700', marginTop: 4 }}>
-                          ₹{item.price}
-                        </ThemedText>
-                      </View>
+                Object.entries(
+                  cartItems.reduce((acc, item) => {
+                    const vName = item.vendorName || 'Kitchen';
+                    if (!acc[vName]) acc[vName] = { vendorId: item.vendorId, items: [] };
+                    acc[vName].items.push(item);
+                    return acc;
+                  }, {} as Record<string, { vendorId: string, items: any[] }>)
+                ).map(([vendorName, group]: [string, any]) => (
+                  <View key={vendorName} style={{ marginBottom: 16 }}>
+                    <ThemedText style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8, color: theme.primary }}>
+                      {vendorName}
+                    </ThemedText>
+                    {group.items.map((item: any) => (
+                      <View key={item.menuItemId} style={[styles.menuItemRow, { borderBottomColor: theme.border }]}>
+                        {item.image && <Image source={{ uri: item.image }} style={styles.menuItemImage} />}
+                        <View style={{ flex: 1, marginLeft: item.image ? 12 : 0 }}>
+                          <ThemedText style={{ fontWeight: '700', fontSize: 15 }}>{item.name}</ThemedText>
+                          <ThemedText style={{ color: theme.primary, fontWeight: '700', marginTop: 4 }}>
+                            ₹{item.price}
+                          </ThemedText>
+                        </View>
 
-                      {/* Quantity Controls */}
-                      <View style={styles.quantityControls}>
-                        <Pressable
-                          onPress={() => updateQuantity(item.menuItemId, item.quantity - 1)}
-                          style={[styles.qtyBtn, { backgroundColor: theme.border }]}
-                        >
-                          <Ionicons name="remove" size={16} color={theme.text} />
-                        </Pressable>
-                        <ThemedText style={{ marginHorizontal: 12, fontWeight: 'bold' }}>{item.quantity}</ThemedText>
-                        <Pressable
-                          onPress={() => updateQuantity(item.menuItemId, item.quantity + 1)}
-                          style={[styles.qtyBtn, { backgroundColor: theme.primary }]}
-                        >
-                          <Ionicons name="add" size={16} color="#FFF" />
-                        </Pressable>
+                        {/* Quantity Controls */}
+                        <View style={styles.quantityControls}>
+                          <Pressable
+                            onPress={() => updateQuantity(item.menuItemId, item.quantity - 1)}
+                            style={[styles.qtyBtn, { backgroundColor: theme.border }]}
+                          >
+                            <Ionicons name="remove" size={16} color={theme.text} />
+                          </Pressable>
+                          <ThemedText style={{ marginHorizontal: 12, fontWeight: 'bold' }}>{item.quantity}</ThemedText>
+                          <Pressable
+                            onPress={() => updateQuantity(item.menuItemId, item.quantity + 1)}
+                            style={[styles.qtyBtn, { backgroundColor: theme.primary }]}
+                          >
+                            <Ionicons name="add" size={16} color="#FFF" />
+                          </Pressable>
+                        </View>
                       </View>
+                    ))}
+                    
+                    {/* Delivery / Pickup Toggle for this Vendor */}
+                    <View style={{ flexDirection: 'row', marginTop: 8, backgroundColor: theme.background, borderRadius: 8, padding: 4 }}>
+                      <Pressable 
+                        onPress={() => setDeliveryOption(group.vendorId, 'pickup')}
+                        style={{ flex: 1, paddingVertical: 8, alignItems: 'center', backgroundColor: deliveryOptions[group.vendorId] !== 'delivery' ? theme.card : 'transparent', borderRadius: 6, shadowColor: deliveryOptions[group.vendorId] !== 'delivery' ? '#000' : 'transparent', shadowOpacity: 0.1, shadowRadius: 2, elevation: deliveryOptions[group.vendorId] !== 'delivery' ? 2 : 0 }}
+                      >
+                        <ThemedText style={{ fontWeight: 'bold', fontSize: 13, color: deliveryOptions[group.vendorId] !== 'delivery' ? theme.primary : theme.textSecondary }}>Pickup (Free)</ThemedText>
+                      </Pressable>
+                      <Pressable 
+                        onPress={() => setDeliveryOption(group.vendorId, 'delivery')}
+                        style={{ flex: 1, paddingVertical: 8, alignItems: 'center', backgroundColor: deliveryOptions[group.vendorId] === 'delivery' ? theme.card : 'transparent', borderRadius: 6, shadowColor: deliveryOptions[group.vendorId] === 'delivery' ? '#000' : 'transparent', shadowOpacity: 0.1, shadowRadius: 2, elevation: deliveryOptions[group.vendorId] === 'delivery' ? 2 : 0 }}
+                      >
+                        <ThemedText style={{ fontWeight: 'bold', fontSize: 13, color: deliveryOptions[group.vendorId] === 'delivery' ? theme.primary : theme.textSecondary }}>Delivery (+₹{globalDeliveryCharge})</ThemedText>
+                      </Pressable>
                     </View>
-                  );
-                })
+                  </View>
+                ))
               ) : (
                 <View style={{ paddingVertical: 40, alignItems: 'center' }}>
                   <Ionicons name="cart-outline" size={40} color={theme.textSecondary} />

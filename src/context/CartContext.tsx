@@ -19,14 +19,28 @@ interface CartContextType {
   clearCart: () => void;
   cartTotal: number;
   itemCount: number;
+  deliveryOptions: Record<string, 'pickup' | 'delivery'>;
+  setDeliveryOption: (vendorId: string, option: 'pickup' | 'delivery') => void;
+  globalDeliveryCharge: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+import { api } from '../services/api';
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [deliveryOptions, setDeliveryOptions] = useState<Record<string, 'pickup' | 'delivery'>>({});
+  const [globalDeliveryCharge, setGlobalDeliveryCharge] = useState<number>(0);
 
   useEffect(() => {
+    // Fetch global delivery charge
+    api.settings.get('DELIVERY_CHARGE').then((res: any) => {
+      if (res && res.value) {
+        setGlobalDeliveryCharge(Number(res.value));
+      }
+    }).catch(console.error);
+
     // Load cart from storage on mount
     AsyncStorage.getItem('homido_cart').then(stored => {
       if (stored) {
@@ -34,6 +48,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           setItems(JSON.parse(stored));
         } catch (e) {
           console.error('Failed to parse cart', e);
+        }
+      }
+    });
+
+    AsyncStorage.getItem('homido_delivery_options').then(stored => {
+      if (stored) {
+        try {
+          setDeliveryOptions(JSON.parse(stored));
+        } catch (e) {
+          console.error('Failed to parse delivery options', e);
         }
       }
     });
@@ -80,13 +104,44 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = () => {
     saveCart([]);
+    setDeliveryOptions({});
+    AsyncStorage.removeItem('homido_delivery_options');
   };
 
-  const cartTotal = items.reduce((total, item) => total + item.price * item.quantity, 0);
+  const setDeliveryOption = (vendorId: string, option: 'pickup' | 'delivery') => {
+    setDeliveryOptions(prev => {
+      const next = { ...prev, [vendorId]: option };
+      AsyncStorage.setItem('homido_delivery_options', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const itemsSubtotal = items.reduce((total, item) => total + item.price * item.quantity, 0);
+  
+  // Calculate delivery charges for vendors selected for delivery
+  const deliveryVendors = new Set(
+    items
+      .filter(item => deliveryOptions[item.vendorId] === 'delivery')
+      .map(item => item.vendorId)
+  );
+  const totalDeliveryCharges = deliveryVendors.size * globalDeliveryCharge;
+  
+  const cartTotal = itemsSubtotal + totalDeliveryCharges;
   const itemCount = items.reduce((count, item) => count + item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ items, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, itemCount }}>
+    <CartContext.Provider value={{ 
+      items, 
+      addToCart, 
+      removeFromCart, 
+      updateQuantity, 
+      clearCart, 
+      cartTotal, 
+      itemCount,
+      deliveryOptions,
+      setDeliveryOption,
+      globalDeliveryCharge
+    }}>
       {children}
     </CartContext.Provider>
   );

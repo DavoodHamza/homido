@@ -124,7 +124,7 @@ export default function VendorOrders() {
           <View style={{ alignItems: 'flex-end' }}>
             <ThemedText style={{ fontWeight: 'bold', color: theme.primary }}>₹{item.total}</ThemedText>
             <View style={[styles.typeBadge, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
-              <ThemedText style={{ fontSize: 10, color: theme.textSecondary }}>Delivery</ThemedText>
+              <ThemedText style={{ fontSize: 10, color: theme.textSecondary, textTransform: 'capitalize' }}>{item.deliveryType || 'pickup'}</ThemedText>
             </View>
           </View>
         </View>
@@ -168,14 +168,14 @@ export default function VendorOrders() {
           )}
           {item.status === 'Preparing' && (
             <Button
-              title="Mark On the Way"
+              title={item.deliveryType === 'delivery' ? "Mark On the Way" : "Mark Ready for Pickup"}
               size="sm"
               onPress={() => handleUpdateStatus(item.id, 'On the Way')}
             />
           )}
           {item.status === 'On the Way' && (
             <Button
-              title="Deliver"
+              title={item.deliveryType === 'delivery' ? "Deliver" : "Complete Pickup"}
               size="sm"
               onPress={() => handleCompleteOrder(item.id)}
             />

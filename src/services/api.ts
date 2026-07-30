@@ -255,6 +255,14 @@ export const api = {
     getAdminVendorAnalytics: () =>
       request('/orders/admin/vendor-analytics'),
   },
+  settings: {
+    get: (key: string) => request(`/settings/${key}`),
+    set: (key: string, value: string) => 
+      request(`/settings/${key}`, {
+        method: 'PUT',
+        body: JSON.stringify({ value }),
+      }),
+  },
 
   // Chat/Messaging
   chat: {

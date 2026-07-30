@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, TextInput } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,8 @@ export default function AdminDashboard() {
   const [vendors, setVendors] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deliveryCharge, setDeliveryCharge] = useState('0');
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const loadData = async () => {
     try {
@@ -22,6 +24,8 @@ export default function AdminDashboard() {
       setVendors(v);
       const o = await api.orders.get();
       setOrders(o);
+      const chargeRes = await api.settings.get('DELIVERY_CHARGE') as any;
+      if (chargeRes && chargeRes.value) setDeliveryCharge(chargeRes.value);
     } catch (err) {
       console.error('Failed to load admin stats:', err);
     } finally {
@@ -44,6 +48,18 @@ export default function AdminDashboard() {
     return orders
       .filter((o) => o.status === 'Delivered')
       .reduce((sum, o) => sum + Number(o.total), 0);
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      setSavingSettings(true);
+      await api.settings.set('DELIVERY_CHARGE', deliveryCharge);
+      Alert.alert('Success', 'Settings updated');
+    } catch (e) {
+      Alert.alert('Error', 'Failed to save settings');
+    } finally {
+      setSavingSettings(false);
+    }
   };
 
   if (loading) {
@@ -74,6 +90,36 @@ export default function AdminDashboard() {
           >
             <Ionicons name="log-out-outline" size={24} color={theme.error} />
           </Pressable>
+        </View>
+
+        {/* Global Settings */}
+        <View style={styles.section}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>Global Settings</ThemedText>
+          <View style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border, paddingVertical: 16, flexDirection: 'column', alignItems: 'stretch' }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <View>
+                <ThemedText style={{ fontWeight: '600', fontSize: 15 }}>Delivery Charge (₹)</ThemedText>
+                <ThemedText style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>Applied to all delivery orders</ThemedText>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <TextInput
+                style={{ flex: 1, backgroundColor: theme.background, color: theme.text, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: theme.border }}
+                value={deliveryCharge}
+                onChangeText={setDeliveryCharge}
+                keyboardType="numeric"
+                placeholder="e.g. 50"
+                placeholderTextColor={theme.textSecondary}
+              />
+              <Pressable
+                style={{ backgroundColor: theme.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}
+                onPress={handleSaveSettings}
+                disabled={savingSettings}
+              >
+                {savingSettings ? <ActivityIndicator color="#FFF" size="small" /> : <ThemedText style={{ color: '#FFF', fontWeight: 'bold' }}>Save</ThemedText>}
+              </Pressable>
+            </View>
+          </View>
         </View>
 
         {/* Global Stats */}
