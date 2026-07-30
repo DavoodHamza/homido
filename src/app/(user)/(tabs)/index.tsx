@@ -3,6 +3,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, useEffect } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View, ActivityIndicator, Alert, Dimensions, Platform } from 'react-native';
+import { useCart } from '@/context/CartContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import RazorpayCheckout from 'react-native-razorpay';
@@ -103,7 +104,7 @@ export default function Home() {
   const [menuModalVisible, setMenuModalVisible] = useState(false);
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [menuLoading, setMenuLoading] = useState(false);
-  const [cart, setCart] = useState<{ [itemId: string]: { item: any; quantity: number } }>({});
+  const { items: cartItems, addToCart, updateQuantity, clearCart, cartTotal, itemCount } = useCart();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -154,28 +155,13 @@ export default function Home() {
 
 
   const updateCartQuantity = (item: any, delta: number) => {
-    setCart((prev) => {
-      const current = prev[item.id];
-      const newQty = (current?.quantity || 0) + delta;
-
-      if (newQty <= 0) {
-        const next = { ...prev };
-        delete next[item.id];
-        return next;
-      }
-
-      return {
-        ...prev,
-        [item.id]: {
-          item,
-          quantity: newQty,
-        },
-      };
-    });
+    const current = cartItems.find((i) => i.menuItemId === item.id);
+    const newQty = (current?.quantity || 0) + delta;
+    updateQuantity(item.id, newQty);
   };
 
   const getCartTotal = () => {
-    return Object.values(cart).reduce((sum, c) => sum + Number(c.item.price) * c.quantity, 0);
+    return cartTotal;
   };
 
   const handlePlaceOrder = async () => {
@@ -190,8 +176,6 @@ export default function Home() {
       );
       return;
     }
-    if (!selectedVendor) return;
-    const cartItems = Object.values(cart);
     if (cartItems.length === 0) return;
 
     if (!user?.addressLocation || !user?.addressPhone) {
@@ -210,17 +194,18 @@ export default function Home() {
     setLoading(true);
     try {
       const itemsPayload = cartItems.map((c) => ({
-        menuItemId: c.item.id,
+        menuItemId: c.menuItemId,
         quantity: c.quantity,
+        vendorId: c.vendorId,
       }));
-      const orderRes = await api.orders.create(selectedVendor.id, itemsPayload);
+      const orderRes = await api.orders.cartCheckout(itemsPayload);
       
       const options = {
         description: 'Homido Order Payment',
         image: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=200&q=80',
         currency: 'INR',
         key: 'rzp_test_TJcEIObFUIvYfC',
-        amount: Math.round(getCartTotal() * 100),
+        amount: Math.round(orderRes.grandTotal * 100),
         name: 'Homido',
         order_id: orderRes.razorpayOrderId,
         theme: { color: theme.primary }
@@ -229,9 +214,9 @@ export default function Home() {
       try {
         const paymentData = await RazorpayCheckout.open(options);
         // Verify payment
-        await api.orders.verifyPayment(orderRes.id, paymentData);
+        await api.orders.verifyCartPayment(paymentData);
         setMenuModalVisible(false);
-        setCart({});
+        clearCart();
         Alert.alert('Success', 'Your order has been placed successfully!', [
           { text: 'OK', onPress: () => router.replace('/(user)/(tabs)/orders') },
         ]);
@@ -610,7 +595,7 @@ export default function Home() {
           </MapView>
 
           {/* Floating Cart Button */}
-          {Object.values(cart).length > 0 && (
+          {cartItems.length > 0 && (
             <Pressable
               style={[styles.floatingCartBtn, { backgroundColor: theme.primary }]}
               onPress={() => setMenuModalVisible(true)}
@@ -618,7 +603,7 @@ export default function Home() {
               <Ionicons name="cart" size={24} color="#FFF" />
               <View style={styles.cartBadge}>
                 <ThemedText style={{ color: theme.primary, fontSize: 12, fontWeight: 'bold' }}>
-                  {Object.values(cart).reduce((sum, c) => sum + c.quantity, 0)}
+                  {itemCount}
                 </ThemedText>
               </View>
             </Pressable>
@@ -669,30 +654,16 @@ export default function Home() {
                   <Pressable
                     style={{ backgroundColor: theme.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
                     onPress={() => {
-                      // Check vendor consistency
-                      const currentVendorId = Object.values(cart)[0]?.item?.vendorId;
-                      if (currentVendorId && currentVendorId !== selectedProduct.vendorId) {
-                        Alert.alert(
-                          'Different Kitchen',
-                          'Your cart contains items from a different kitchen. Clear cart to add this item?',
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            {
-                              text: 'Clear Cart',
-                              style: 'destructive',
-                              onPress: () => {
-                                setCart({ [selectedProduct.id]: { item: selectedProduct, quantity: 1 } });
-                                setProductModalVisible(false);
-                                setMenuModalVisible(true); // Open cart drawer
-                              }
-                            }
-                          ]
-                        );
-                      } else {
-                        updateCartQuantity(selectedProduct, 1);
-                        setProductModalVisible(false);
-                        setMenuModalVisible(true); // Open cart drawer
-                      }
+                      addToCart({
+                        menuItemId: selectedProduct.id,
+                        name: selectedProduct.name,
+                        price: selectedProduct.price,
+                        quantity: 1,
+                        vendorId: selectedProduct.vendorId,
+                        image: selectedProduct.image,
+                      });
+                      setProductModalVisible(false);
+                      setMenuModalVisible(true); // Open cart drawer
                     }}
                   >
                     <ThemedText style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>Add to Cart</ThemedText>
@@ -726,12 +697,10 @@ export default function Home() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
-              {Object.values(cart).length > 0 ? (
-                Object.values(cart).map((c) => {
-                  const item = c.item;
-                  const quantity = c.quantity;
+              {cartItems.length > 0 ? (
+                cartItems.map((item) => {
                   return (
-                    <View key={item.id} style={[styles.menuItemRow, { borderBottomColor: theme.border }]}>
+                    <View key={item.menuItemId} style={[styles.menuItemRow, { borderBottomColor: theme.border }]}>
                       {item.image && <Image source={{ uri: item.image }} style={styles.menuItemImage} />}
                       <View style={{ flex: 1, marginLeft: item.image ? 12 : 0 }}>
                         <ThemedText style={{ fontWeight: '700', fontSize: 15 }}>{item.name}</ThemedText>
@@ -743,14 +712,14 @@ export default function Home() {
                       {/* Quantity Controls */}
                       <View style={styles.quantityControls}>
                         <Pressable
-                          onPress={() => updateCartQuantity(item, -1)}
+                          onPress={() => updateQuantity(item.menuItemId, item.quantity - 1)}
                           style={[styles.qtyBtn, { backgroundColor: theme.border }]}
                         >
                           <Ionicons name="remove" size={16} color={theme.text} />
                         </Pressable>
-                        <ThemedText style={{ marginHorizontal: 12, fontWeight: 'bold' }}>{quantity}</ThemedText>
+                        <ThemedText style={{ marginHorizontal: 12, fontWeight: 'bold' }}>{item.quantity}</ThemedText>
                         <Pressable
-                          onPress={() => updateCartQuantity(item, 1)}
+                          onPress={() => updateQuantity(item.menuItemId, item.quantity + 1)}
                           style={[styles.qtyBtn, { backgroundColor: theme.primary }]}
                         >
                           <Ionicons name="add" size={16} color="#FFF" />
@@ -769,7 +738,7 @@ export default function Home() {
               )}
             </ScrollView>
 
-            {Object.values(cart).length > 0 && (
+            {cartItems.length > 0 && (
               <View style={[styles.checkoutFooter, { borderTopColor: theme.border }]}>
                 <View style={styles.checkoutTotalRow}>
                   <ThemedText style={{ fontSize: 16, fontWeight: 'bold' }}>Total:</ThemedText>
@@ -780,13 +749,7 @@ export default function Home() {
                 <Pressable
                   style={[styles.checkoutBtn, { backgroundColor: theme.primary }]}
                   onPress={() => {
-                    // Since cart items are checked to be from the same vendor, we can safely take the first item's vendorId
-                    const vendorId = Object.values(cart)[0]?.item?.vendorId;
-                    if (vendorId) {
-                      // We need to temporarily set selectedVendor for handlePlaceOrder
-                      setSelectedVendor({ id: vendorId });
-                      setTimeout(handlePlaceOrder, 100);
-                    }
+                    handlePlaceOrder();
                   }}
                   disabled={loading}
                 >

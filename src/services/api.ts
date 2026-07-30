@@ -218,6 +218,11 @@ export const api = {
 
   // Orders
   orders: {
+    cartCheckout: (items: any[]) =>
+      request('/orders/cart-checkout', {
+        method: 'POST',
+        body: JSON.stringify({ items }),
+      }),
     create: (vendorId: string, items: { menuItemId: string; quantity: number }[]) =>
       request('/orders', {
         method: 'POST',
@@ -225,6 +230,11 @@ export const api = {
       }),
     verifyPayment: (orderId: string, paymentData: any) =>
       request(`/orders/${orderId}/verify-payment`, {
+        method: 'POST',
+        body: JSON.stringify(paymentData),
+      }),
+    verifyCartPayment: (paymentData: any) =>
+      request(`/orders/cart-checkout-verify`, {
         method: 'POST',
         body: JSON.stringify(paymentData),
       }),

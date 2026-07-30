@@ -4,6 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useThemeStore } from '@/hooks/useThemeStore';
+import { CartProvider } from '@/context/CartContext';
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -20,14 +21,16 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(user)/(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(vendor)/(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(admin)/(tabs)" options={{ headerShown: false }} />
-      </Stack>
+      <CartProvider>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(user)/(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(vendor)/(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(admin)/(tabs)" options={{ headerShown: false }} />
+        </Stack>
+      </CartProvider>
     </ThemeProvider>
   );
 }
