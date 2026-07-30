@@ -248,4 +248,17 @@ export const api = {
         body: JSON.stringify({ receiverId, message, orderId }),
       }),
   },
+  
+  // Categories
+  categories: {
+    getAll: () => request('/categories'),
+    create: (data: { name: string; icon: string }) => 
+      request('/categories', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) => 
+      request(`/categories/${id}`, { method: 'DELETE' }),
+  },
 };
+

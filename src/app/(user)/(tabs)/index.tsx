@@ -23,14 +23,8 @@ import { useAuthStore } from '@/hooks/useAuthStore';
 import { api } from '@/services/api';
 import * as Location from 'expo-location';
 
-const CATEGORIES = [
-  { id: 'all', name: 'All Food', icon: '🍽️' },
-  { id: 'cakes', name: 'Cakes', icon: '🎂' },
-  { id: 'meals', name: 'Meals', icon: '🍲' },
-  { id: 'pickles', name: 'Pickles', icon: '🥒' },
-  { id: 'snacks', name: 'Snacks', icon: '🥨' },
-  { id: 'desserts', name: 'Desserts', icon: '🍨' },
-];
+// Dynamic categories will be fetched from the backend.
+// We prepended 'All Food' to this list manually.
 
 export default function Home() {
   const theme = useTheme();
@@ -39,6 +33,9 @@ export default function Home() {
 
   // State for filtering and sorting
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [categories, setCategories] = useState<{id: string, name: string, icon: string}[]>([
+    { id: 'all', name: 'All Food', icon: '🍽️' }
+  ]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'rating' | 'time'>('rating');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
@@ -110,7 +107,21 @@ export default function Home() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      const fetchProducts = async () => {
+      const fetchCategories = async () => {
+        try {
+          const backendCats = await api.categories.getAll();
+          const mappedCats = backendCats.map((c: any) => ({
+            id: c.name.toLowerCase(),
+            name: c.name,
+            icon: c.icon || '🍽️'
+          }));
+          setCategories([{ id: 'all', name: 'All Food', icon: '🍽️' }, ...mappedCats]);
+        } catch (err) {
+          console.error('Failed to load categories:', err);
+        }
+      };
+
+      const fetchVendors = async () => {
         setLoading(true);
         try {
           const res = await api.menu.getAll({
@@ -126,8 +137,9 @@ export default function Home() {
           setLoading(false);
         }
       };
-      fetchProducts();
-    }, 0);
+      fetchCategories();
+      fetchVendors();
+    }, 500);
     return () => clearTimeout(timer);
   }, [selectedCategory, searchQuery, minRating, sortBy, locationFilter, userCoords]);
 
@@ -282,7 +294,7 @@ export default function Home() {
         {/* Categories */}
         <View style={{ marginTop: 16, marginBottom: 24 }}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
-            {CATEGORIES.map((cat) => (
+            {categories.map((cat) => (
               <Pressable
                 key={cat.id}
                 onPress={() => setSelectedCategory(cat.id)}

@@ -40,7 +40,9 @@ export default function VendorDashboard() {
 
   // Kitchen Profile Form
   const [kitchenName, setKitchenName] = useState('');
-  const [category, setCategory] = useState('cakes');
+  const [category, setCategory] = useState('');
+  const [categoriesList, setCategoriesList] = useState<any[]>([]);
+
   const [timeVal, setTimeVal] = useState('20');
   const [imageUrl, setImageUrl] = useState('');
   const [locationStr, setLocationStr] = useState('Signature Towers, Hitech City');
@@ -56,6 +58,12 @@ export default function VendorDashboard() {
 
   const loadData = async () => {
     try {
+      const cats = await api.categories.getAll();
+      setCategoriesList(cats);
+      if (cats.length > 0 && !category) {
+        setCategory(cats[0].name.toLowerCase());
+      }
+
       const prof = await api.vendors.getProfileMe();
       setProfile(prof);
 
@@ -226,18 +234,18 @@ export default function VendorDashboard() {
 
             <ThemedText style={{ color: theme.textSecondary, marginBottom: 8, fontSize: 13 }}>Primary Category:</ThemedText>
             <View style={styles.categoryPickerRow}>
-              {['cakes', 'meals', 'pickles', 'desserts'].map((cat) => (
+              {categoriesList.map((cat) => (
                 <Pressable
-                  key={cat}
-                  onPress={() => setCategory(cat)}
+                  key={cat.id}
+                  onPress={() => setCategory(cat.name.toLowerCase())}
                   style={[
                     styles.pickerBtn,
                     { borderColor: theme.border },
-                    category === cat && { backgroundColor: theme.primary, borderColor: theme.primary },
+                    category === cat.name.toLowerCase() && { backgroundColor: theme.primary, borderColor: theme.primary },
                   ]}
                 >
-                  <ThemedText style={[styles.pickerBtnText, category === cat && { color: '#FFF' }]}>
-                    {cat.toUpperCase()}
+                  <ThemedText style={[styles.pickerBtnText, category === cat.name.toLowerCase() && { color: '#FFF' }]}>
+                    {cat.name.toUpperCase()}
                   </ThemedText>
                 </Pressable>
               ))}
