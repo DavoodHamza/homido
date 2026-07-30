@@ -109,13 +109,14 @@ export default function MediaPicker({
       const mimeType =
         asset.mimeType ||
         (type === 'video' ? 'video/mp4' : 'image/jpeg');
+      const fileName = asset.fileName ?? undefined;
 
-      console.log('[MediaPicker] Uploading with mimeType:', mimeType);
+      console.log('[MediaPicker] Uploading with mimeType:', mimeType, 'fileName:', fileName);
 
       if (type === 'video') {
-        serverUrl = await api.upload.video(asset.uri, asset.fileName ?? undefined, mimeType);
+        serverUrl = await api.upload.video(asset.uri, fileName, mimeType);
       } else {
-        serverUrl = await api.upload.image(asset.uri, asset.fileName ?? undefined, mimeType);
+        serverUrl = await api.upload.image(asset.uri, fileName, mimeType);
       }
 
       console.log('[MediaPicker] Upload success, URL:', serverUrl);

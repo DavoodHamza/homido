@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, TextInput, Alert, ActivityIndicator, Modal, FlatList, Image } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,24 @@ import { useAuthStore } from '@/hooks/useAuthStore';
 import { api } from '@/services/api';
 import MediaPicker from '@/components/MediaPicker';
 import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const INDIAN_BANKS = [
+  'State Bank of India',
+  'HDFC Bank',
+  'ICICI Bank',
+  'Axis Bank',
+  'Kotak Mahindra Bank',
+  'Punjab National Bank',
+  'Bank of Baroda',
+  'Bank of India',
+  'Union Bank of India',
+  'Canara Bank',
+  'IndusInd Bank',
+  'Yes Bank',
+  'IDFC FIRST Bank',
+];
 
 export default function VendorDashboard() {
   const theme = useTheme();
@@ -26,6 +44,15 @@ export default function VendorDashboard() {
   const [timeVal, setTimeVal] = useState('20');
   const [imageUrl, setImageUrl] = useState('');
   const [locationStr, setLocationStr] = useState('Signature Towers, Hitech City');
+  
+  // Bank Details & Certificates
+  const [bankName, setBankName] = useState('');
+  const [bankAccountName, setBankAccountName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankIFSC, setBankIFSC] = useState('');
+  const [fssaiCertificate, setFssaiCertificate] = useState('');
+  const [isBankModalVisible, setBankModalVisible] = useState(false);
+  const [uploadingFssai, setUploadingFssai] = useState(false);
 
   const loadData = async () => {
     try {
@@ -57,9 +84,45 @@ export default function VendorDashboard() {
     return () => clearTimeout(timer);
   }, []);
 
+  const handleUploadFssai = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please allow access to your photo library to upload certificate.');
+        return;
+      }
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.5,
+      });
+
+      if (pickerResult.canceled || !pickerResult.assets?.length) return;
+      const asset = pickerResult.assets[0];
+
+      setUploadingFssai(true);
+      const uploadedUrl = await api.upload.image(
+        asset.uri,
+        asset.fileName ?? undefined,
+        asset.mimeType ?? 'image/jpeg',
+      );
+      setFssaiCertificate(uploadedUrl);
+      Alert.alert('Success', 'Certificate uploaded successfully.');
+    } catch (err: any) {
+      Alert.alert('Upload Error', err.message || 'Failed to upload certificate. Please try again.');
+    } finally {
+      setUploadingFssai(false);
+    }
+  };
+
+
   const handleRegisterKitchen = async () => {
     if (!kitchenName.trim()) {
       Alert.alert('Error', 'Please enter a kitchen name.');
+      return;
+    }
+    if (!bankName || !bankAccountName || !bankAccountNumber || !bankIFSC || !fssaiCertificate) {
+      Alert.alert('Error', 'Please provide all bank details and upload your FSSAI certificate.');
       return;
     }
 
@@ -91,7 +154,12 @@ export default function VendorDashboard() {
         category,
         finalLocationStr || undefined,
         latitude,
-        longitude
+        longitude,
+        bankName,
+        bankAccountName,
+        bankAccountNumber,
+        bankIFSC,
+        fssaiCertificate
       );
       setProfile(prof);
       Alert.alert('Success', 'Kitchen profile registered successfully!');
@@ -200,8 +268,80 @@ export default function VendorDashboard() {
               label="Add Kitchen Cover Photo"
             />
 
+            <ThemedText style={{ color: theme.textSecondary, marginBottom: 8, fontSize: 13, marginTop: 16 }}>Bank Details:</ThemedText>
+            <Pressable
+              style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, justifyContent: 'center' }]}
+              onPress={() => setBankModalVisible(true)}
+            >
+              <ThemedText style={{ color: bankName ? theme.text : theme.textSecondary }}>
+                {bankName || 'Select Bank Name'}
+              </ThemedText>
+            </Pressable>
+            <TextInput
+              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.card, marginTop: 12 }]}
+              placeholder="Account Holder Name"
+              placeholderTextColor={theme.textSecondary}
+              value={bankAccountName}
+              onChangeText={setBankAccountName}
+            />
+            <TextInput
+              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.card, marginTop: 12 }]}
+              placeholder="Bank Account Number"
+              placeholderTextColor={theme.textSecondary}
+              keyboardType="number-pad"
+              value={bankAccountNumber}
+              onChangeText={setBankAccountNumber}
+            />
+            <TextInput
+              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.card, marginTop: 12 }]}
+              placeholder="IFSC Code"
+              placeholderTextColor={theme.textSecondary}
+              autoCapitalize="characters"
+              value={bankIFSC}
+              onChangeText={setBankIFSC}
+            />
+
+            <ThemedText style={{ color: theme.textSecondary, marginBottom: 8, fontSize: 13, marginTop: 16 }}>FSSAI Certificate:</ThemedText>
+            {fssaiCertificate ? (
+              <View style={{ marginBottom: 12 }}>
+                <Image source={{ uri: fssaiCertificate }} style={{ width: '100%', height: 150, borderRadius: 8 }} />
+                <Button title="Re-upload Certificate" variant="outline" onPress={handleUploadFssai} style={{ marginTop: 8 }} disabled={uploadingFssai} />
+              </View>
+            ) : (
+              <Button title={uploadingFssai ? "Uploading..." : "Upload FSSAI Certificate"} variant="outline" onPress={handleUploadFssai} style={{ marginBottom: 16 }} disabled={uploadingFssai} />
+            )}
+
             <Button title="Create Kitchen Profile" onPress={handleRegisterKitchen} style={{ height: 50, marginTop: 10 }} />
           </Card>
+
+          <Modal visible={isBankModalVisible} animationType="slide" transparent>
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+              <View style={{ backgroundColor: theme.background, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '70%', padding: 16 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <ThemedText type="subtitle">Select Bank</ThemedText>
+                  <Pressable onPress={() => setBankModalVisible(false)}><Ionicons name="close" size={24} color={theme.text} /></Pressable>
+                </View>
+                <FlatList
+                  data={INDIAN_BANKS}
+                  keyExtractor={(item) => item}
+                  renderItem={({ item }) => (
+                    <Pressable
+                      style={{ paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.border }}
+                      onPress={() => {
+                        setBankName(item);
+                        setBankModalVisible(false);
+                      }}
+                    >
+                      <ThemedText style={{ color: bankName === item ? theme.primary : theme.text, fontWeight: bankName === item ? 'bold' : 'normal' }}>
+                        {item}
+                      </ThemedText>
+                    </Pressable>
+                  )}
+                />
+              </View>
+            </View>
+          </Modal>
+
         </ScrollView>
       </SafeAreaView>
     );
@@ -209,146 +349,182 @@ export default function VendorDashboard() {
 
   // 2. Kitchen Profile Registered
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <ThemedText style={{ color: theme.textSecondary }}>Welcome back,</ThemedText>
-            <ThemedText type="title">{profile.name}</ThemedText>
-          </View>
-          <Pressable
-            onPress={loadData}
-            style={[styles.iconButton, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}
-          >
-            <Ionicons name="refresh" size={20} color={theme.text} />
-          </Pressable>
-        </View>
-
-        {/* Approval Banner */}
-        {profile.status === 'pending' && (
-          <View style={[styles.pendingBanner, { backgroundColor: theme.accent + '15', borderColor: theme.accent }]}>
-            <Ionicons name="alert-circle" size={20} color={theme.accent} />
-            <ThemedText style={[styles.pendingText, { color: theme.accent }]}>
-              Pending Approval: Customers cannot order from your kitchen yet.
-            </ThemedText>
-          </View>
-        )}
-
-        {/* Quick Stats */}
-        <View style={styles.statsGrid}>
-          <Card style={[styles.statCard, { backgroundColor: theme.primary + '15' }]}>
-            <View style={styles.statIconContainer}>
-              <Ionicons name="cash-outline" size={24} color={theme.primary} />
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#f2faed', '#ffffff']}
+        style={StyleSheet.absoluteFill}
+      />
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          
+          {/* Header */}
+          <View style={styles.modernHeader}>
+            <View style={styles.headerLeft}>
+              <View style={styles.avatarCircle}>
+                <ThemedText style={styles.avatarText}>{profile.name.charAt(0)}</ThemedText>
+              </View>
+              <View>
+                <ThemedText style={styles.greetingText}>Hi, {user?.name?.split(' ')[0] || 'Chef'}</ThemedText>
+                <ThemedText style={styles.welcomeText}>Welcome Back!</ThemedText>
+              </View>
             </View>
-            <ThemedText style={{ color: theme.textSecondary, marginTop: 12 }}>Today&apos;s Revenue</ThemedText>
-            <ThemedText style={{ fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>₹{getTodayRevenue()}</ThemedText>
-          </Card>
-
-          <Card style={[styles.statCard, { backgroundColor: theme.accent + '15' }]}>
-            <View style={styles.statIconContainer}>
-              <Ionicons name="time-outline" size={24} color={theme.accent} />
-            </View>
-            <ThemedText style={{ color: theme.textSecondary, marginTop: 12 }}>Pending Orders</ThemedText>
-            <ThemedText style={{ fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>{getPendingOrdersCount()}</ThemedText>
-          </Card>
-        </View>
-
-        {/* All-Time Sales */}
-        <Card style={styles.projectionCard}>
-          <View style={styles.projectionHeader}>
-            <View>
-              <ThemedText style={{ color: theme.textSecondary }}>All-Time Earned</ThemedText>
-              <ThemedText style={{ fontSize: 28, fontWeight: 'bold', marginTop: 4 }}>₹{getEstMonthlySales()}</ThemedText>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <ThemedText style={{ color: theme.textSecondary }}>Total Sales</ThemedText>
-              <ThemedText style={{ fontSize: 20, fontWeight: 'bold', marginTop: 4, color: theme.primary }}>
-                {getTotalSalesCount()} Orders
-              </ThemedText>
+            <View style={styles.headerRight}>
+              <Pressable style={styles.headerIconBtn} onPress={loadData}>
+                <Ionicons name="refresh" size={20} color="#333" />
+              </Pressable>
+              <Pressable style={styles.headerIconBtn}>
+                <Ionicons name="notifications-outline" size={20} color="#333" />
+              </Pressable>
             </View>
           </View>
 
-          {/* simple graph mapping */}
-          <View style={styles.mockChart}>
-            {[40, 60, 45, 80, 55, 90, 70].map((height, i) => (
-              <View key={i} style={[styles.bar, { height: `${height}%`, backgroundColor: theme.primary }]} />
-            ))}
-          </View>
-        </Card>
+          <ThemedText style={styles.pageTitle}>Let's Track Your{"\n"}Sales</ThemedText>
 
-        {/* Reviews */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">Kitchen Rating</ThemedText>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Ionicons name="star" size={16} color={theme.accent} />
-              <ThemedText style={{ fontWeight: 'bold' }}>{Number(profile.rating).toFixed(1)} / 5.0</ThemedText>
+          {/* Hero Card */}
+          <View style={styles.heroCard}>
+            <View style={styles.heroLeft}>
+              <ThemedText style={styles.heroLabel}>Total Earnings</ThemedText>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <ThemedText 
+                  style={[styles.heroValue, { fontSize: 24, flexWrap: 'wrap' }]} 
+                >
+                  ₹{getEstMonthlySales()}
+                </ThemedText>
+                <ThemedText style={[styles.heroSubText, { marginTop: 4 }]}>All Time</ThemedText>
+              </View>
             </View>
-          </View>
-
-          <Card style={styles.reviewCard}>
-            <View style={styles.reviewHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={[styles.avatar, { backgroundColor: theme.border }]}>
-                  <ThemedText style={{ fontWeight: 'bold' }}>AJ</ThemedText>
-                </View>
-                <View style={{ marginLeft: 12 }}>
-                  <ThemedText style={{ fontWeight: 'bold' }}>Ankit J.</ThemedText>
-                  <View style={{ flexDirection: 'row', marginTop: 2 }}>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Ionicons key={star} name="star" size={12} color={theme.accent} />
-                    ))}
-                  </View>
+            <View style={styles.heroRight}>
+              <View style={styles.fauxChartOuter}>
+                <View style={styles.fauxChartInner}>
+                  <Ionicons name="flame" size={36} color="#FF6B6B" />
                 </View>
               </View>
-              <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }}>2 hours ago</ThemedText>
             </View>
-            <ThemedText style={{ marginTop: 12, lineHeight: 20 }}>
-              &quot;Everything was absolutely amazing! Moist texture and perfectly spiced. Highly recommended.&quot;
-            </ThemedText>
-          </Card>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          </View>
+
+          {/* Metrics Row */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.metricsRow}>
+            {/* Today */}
+            <View style={styles.metricPill}>
+              <ThemedText style={styles.metricTitle}>Today</ThemedText>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: '60%', backgroundColor: '#b4d89a' }]} />
+              </View>
+              <ThemedText style={styles.metricValue}>₹{getTodayRevenue()}</ThemedText>
+            </View>
+
+            {/* Pending */}
+            <View style={styles.metricPill}>
+              <ThemedText style={styles.metricTitle}>Pending</ThemedText>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: '40%', backgroundColor: '#90cdf4' }]} />
+              </View>
+              <ThemedText style={styles.metricValue}>{getPendingOrdersCount()} Ords</ThemedText>
+            </View>
+
+            {/* Total Sales */}
+            <View style={styles.metricPill}>
+              <ThemedText style={styles.metricTitle}>Completed</ThemedText>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: '85%', backgroundColor: '#feb2b2' }]} />
+              </View>
+              <ThemedText style={styles.metricValue}>{getTotalSalesCount()} Total</ThemedText>
+            </View>
+          </ScrollView>
+
+          {/* List Section */}
+          <View style={styles.listSection}>
+             {orders.slice(0, 5).map((ord, idx) => (
+                <View key={ord.id || idx} style={styles.activityCard}>
+                  <View style={styles.activityLeft}>
+                    <View style={[styles.activityIcon, { backgroundColor: ord.status === 'Delivered' ? '#f0fdf4' : '#fff7ed' }]}>
+                      <Ionicons name={ord.status === 'Delivered' ? 'flame' : 'time'} size={20} color={ord.status === 'Delivered' ? '#b4d89a' : '#ea580c'} />
+                    </View>
+                    <View>
+                      <ThemedText style={styles.activityName}>Order #{ord.id?.substring(0,6) || 'N/A'}</ThemedText>
+                      <ThemedText style={styles.activityStatus}>{ord.status} • ₹{ord.total}</ThemedText>
+                    </View>
+                  </View>
+                  <View style={styles.activityRight}>
+                    <View style={styles.activityPlus}>
+                      <Ionicons name="add" size={16} color="#666" />
+                    </View>
+                  </View>
+                </View>
+             ))}
+             {orders.length === 0 && (
+                <View style={styles.activityCard}>
+                  <ThemedText style={styles.activityName}>No recent orders</ThemedText>
+                </View>
+             )}
+          </View>
+          
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#fff',
+  },
+  safeArea: {
+    flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
+    padding: 20,
+    paddingBottom: 60,
   },
-  header: {
+  modernHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
   },
-  iconButton: {
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarCircle: {
     width: 44,
     height: 44,
     borderRadius: 22,
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    marginRight: 12,
   },
-  statsGrid: {
+  avatarText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  greetingText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+  },
+  welcomeText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  headerRight: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 24,
+    gap: 8,
   },
-  statCard: {
-    flex: 1,
-    padding: 16,
-  },
-  statIconContainer: {
+  headerIconBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFF',
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -357,107 +533,214 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  projectionCard: {
-    padding: 20,
+  pageTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#111',
+    lineHeight: 38,
     marginBottom: 24,
   },
-  projectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  trendBadge: {
+  heroCard: {
+    backgroundColor: '#e6f4d5',
+    borderRadius: 24,
+    padding: 24,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  mockChart: {
-    height: 120,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
     justifyContent: 'space-between',
-    marginTop: 24,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#EADFCF',
-  },
-  bar: {
-    width: 24,
-    borderRadius: 6,
-  },
-  section: {
     marginBottom: 24,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+  heroLeft: {
+    flex: 1,
   },
-  reviewCard: {
-    padding: 16,
+  heroLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4a5d3f',
+    marginBottom: 8,
   },
-  reviewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  heroValue: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#2a3b20',
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  heroSubText: {
+    fontSize: 16,
+    color: '#4a5d3f',
+    fontWeight: '500',
+  },
+  heroRight: {
+    width: 100,
+    height: 100,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pendingBanner: {
+  fauxChartOuter: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 8,
+    borderColor: '#c6e0b0',
+    borderTopColor: '#f59e0b',
+    borderRightColor: '#f59e0b',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-45deg' }],
+  },
+  fauxChartInner: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    backgroundColor: '#e6f4d5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '45deg' }],
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingBottom: 24,
+  },
+  metricPill: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 16,
+    width: 110,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  metricTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  progressBarBg: {
+    height: 6,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 3,
+    marginBottom: 12,
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  metricValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111',
+  },
+  listSection: {
+    marginTop: 8,
+  },
+  listTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111',
+    marginBottom: 16,
+  },
+  activityCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 24,
-    gap: 8,
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 1,
   },
-  pendingText: {
-    flex: 1,
-    fontSize: 13,
+  activityLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  activityIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  activityName: {
+    fontSize: 16,
     fontWeight: '600',
+    color: '#111',
   },
-  // Form Styles
+  activityStatus: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  activityRight: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activityPlus: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f8f8f8',
+    borderWidth: 1,
+    borderColor: '#eee',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  // Registration Form Styles remain intact
   formCard: {
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    marginTop: 40,
   },
   formTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 8,
+    color: '#111',
   },
   input: {
-    height: 50,
+    height: 52,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     paddingHorizontal: 16,
-    marginBottom: 14,
+    marginBottom: 16,
     fontSize: 15,
   },
   categoryPickerRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 6,
+    marginBottom: 16,
   },
   pickerBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
     borderWidth: 1,
   },
   pickerBtnText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '700',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
   },
 });

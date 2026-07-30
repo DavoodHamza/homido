@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import { useAuthStore } from '../hooks/useAuthStore';
 import { API_CONFIG } from '../config';
+import * as FileSystem from 'expo-file-system/legacy';
+
 
 export const BASE_URL = API_CONFIG.BASE_URL;
 export const SERVER_ROOT = API_CONFIG.SERVER_ROOT;
@@ -66,6 +68,48 @@ async function requestFormData(endpoint: string, formData: FormData) {
   return data as { url: string };
 }
 
+/**
+ * Upload a local file URI to S3 via the backend.
+ * Reads the file as base64 using expo-file-system and sends it as JSON.
+ * This is the most reliable method — avoids all multipart/binary issues.
+ */
+async function uploadFile(
+  endpoint: string,
+  uri: string,
+  mimeType: string,
+): Promise<string> {
+  const token = useAuthStore.getState().token;
+
+  console.log('[Upload] Reading file as base64:', uri.substring(0, 60));
+
+  // Read local file as base64 — works reliably for all file:// URIs on iOS/Android
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+
+  console.log('[Upload] base64 length:', base64.length, '— sending to', endpoint);
+
+  const res = await fetch(`${BASE_URL}${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ base64, mimeType }),
+  });
+
+  const text = await res.text();
+  let data: any;
+  try { data = JSON.parse(text); } catch { throw new Error(`Upload failed (${res.status})`); }
+
+  if (!res.ok) {
+    throw new Error(data?.message || `Upload failed with status ${res.status}`);
+  }
+
+  console.log('[Upload] Success, url:', data.url);
+  return data.url;
+}
+
 export const api = {
   // Authentication
   auth: {
@@ -81,45 +125,13 @@ export const api = {
       }),
   },
 
-  // Upload (image or video file → server disk → returns absolute URL)
+  // Upload — reads file as base64 and uploads via backend to S3
   upload: {
-    image: async (uri: string, fileName?: string, mimeType?: string): Promise<string> => {
-      const formData = new FormData();
-      const name = fileName || uri.split('/').pop() || `photo_${Date.now()}.jpg`;
-      const type = mimeType || 'image/jpeg';
+    image: (uri: string, fileName?: string, mimeType?: string): Promise<string> =>
+      uploadFile('/upload/image', uri, mimeType || 'image/jpeg'),
 
-      if (Platform.OS === 'web') {
-        // Web: fetch the blob URL and convert to a real File object
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const file = new File([blob], name, { type });
-        formData.append('file', file);
-      } else {
-        // Native: RN's fetch polyfill understands the { uri, name, type } pattern
-        formData.append('file', { uri, name, type } as any);
-      }
-
-      const result = await requestFormData('/upload/image', formData);
-      return `${SERVER_ROOT}${result.url}`;
-    },
-
-    video: async (uri: string, fileName?: string, mimeType?: string): Promise<string> => {
-      const formData = new FormData();
-      const name = fileName || uri.split('/').pop() || `video_${Date.now()}.mp4`;
-      const type = mimeType || 'video/mp4';
-
-      if (Platform.OS === 'web') {
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const file = new File([blob], name, { type });
-        formData.append('file', file);
-      } else {
-        formData.append('file', { uri, name, type } as any);
-      }
-
-      const result = await requestFormData('/upload/video', formData);
-      return `${SERVER_ROOT}${result.url}`;
-    },
+    video: (uri: string, fileName?: string, mimeType?: string): Promise<string> =>
+      uploadFile('/upload/video', uri, mimeType || 'video/mp4'),
   },
 
   // Vendors
@@ -145,10 +157,10 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
-    register: (name: string, image?: string, timeVal?: number, category?: string, location?: string, latitude?: number, longitude?: number) =>
+    register: (name: string, image?: string, timeVal?: number, category?: string, location?: string, latitude?: number, longitude?: number, bankName?: string, bankAccountName?: string, bankAccountNumber?: string, bankIFSC?: string, fssaiCertificate?: string) =>
       request('/vendors/register', {
         method: 'POST',
-        body: JSON.stringify({ name, image, timeVal, category, location, latitude, longitude }),
+        body: JSON.stringify({ name, image, timeVal, category, location, latitude, longitude, bankName, bankAccountName, bankAccountNumber, bankIFSC, fssaiCertificate }),
       }),
     getAdminAll: () =>
       request('/vendors/admin/all'),

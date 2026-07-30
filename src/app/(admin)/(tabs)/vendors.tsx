@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, Pressable, RefreshControl, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, Pressable, RefreshControl, ActivityIndicator, Alert, Image, Linking } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -116,6 +116,42 @@ export default function AdminVendors() {
             <ThemedText style={styles.detailLabel}>Applied On</ThemedText>
             <ThemedText style={styles.detailValue}>{dateFormatted}</ThemedText>
           </View>
+        </View>
+
+        <View style={[styles.vendorDetails, { marginTop: 16, borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 16 }]}>
+          <ThemedText style={{ fontWeight: 'bold', marginBottom: 8, fontSize: 14 }}>Bank & Certificate Details</ThemedText>
+          <View style={styles.detailItem}>
+            <ThemedText style={styles.detailLabel}>Bank Name</ThemedText>
+            <ThemedText style={styles.detailValue}>{item.bankName || 'N/A'}</ThemedText>
+          </View>
+          <View style={styles.detailItem}>
+            <ThemedText style={styles.detailLabel}>Account Holder</ThemedText>
+            <ThemedText style={styles.detailValue}>{item.bankAccountName || 'N/A'}</ThemedText>
+          </View>
+          <View style={styles.detailItem}>
+            <ThemedText style={styles.detailLabel}>Account Number</ThemedText>
+            <ThemedText style={styles.detailValue}>{item.bankAccountNumber || 'N/A'}</ThemedText>
+          </View>
+          <View style={styles.detailItem}>
+            <ThemedText style={styles.detailLabel}>IFSC Code</ThemedText>
+            <ThemedText style={styles.detailValue}>{item.bankIFSC || 'N/A'}</ThemedText>
+          </View>
+          
+          {item.fssaiCertificate && (
+            <View style={{ marginTop: 12 }}>
+              <ThemedText style={styles.detailLabel}>FSSAI Certificate</ThemedText>
+              <Pressable onPress={() => Linking.openURL(item.fssaiCertificate)}>
+                <Image 
+                  source={{ uri: item.fssaiCertificate }} 
+                  style={{ width: '100%', height: 120, borderRadius: 8, marginTop: 8, backgroundColor: theme.border }} 
+                  resizeMode="cover"
+                />
+                <View style={{ position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                  <ThemedText style={{ color: '#fff', fontSize: 10 }}>Tap to view full</ThemedText>
+                </View>
+              </Pressable>
+            </View>
+          )}
         </View>
 
         {item.status === 'pending' && (

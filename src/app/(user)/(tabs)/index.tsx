@@ -308,31 +308,39 @@ export default function Home() {
         {/* Hero Featured Vendor */}
         {loading ? (
           <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
-        ) : products.length > 0 && (
-          <View style={styles.heroSection}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <ThemedText type="subtitle" style={styles.sectionTitle}>Most Sold Near You</ThemedText>
-              <View style={{ backgroundColor: '#FFEDD5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-                <ThemedText style={{ color: '#EA580C', fontSize: 12, fontWeight: 'bold' }}>🔥 Trending</ThemedText>
-              </View>
-            </View>
-
-            <Pressable onPress={() => openProductModal(products[0])}>
-              <View style={styles.heroImageContainer}>
-                <Image
-                  source={require('../../../../assets/images/featured_food.png')}
-                  style={styles.heroImage}
-                />
-                <View style={styles.heroOverlay}>
-                  <ThemedText style={styles.heroTitle}>{products[0].name}</ThemedText>
-                  <View style={styles.heroMeta}>
-                    <ThemedText style={styles.heroSubtitle}>₹{products[0].price} • {products[0].vendor?.name || 'Local Kitchen'}</ThemedText>
-                  </View>
+        ) : products.length > 0 && (() => {
+          const hero = products[0];
+          return (
+            <View style={styles.heroSection}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <ThemedText type="subtitle" style={styles.sectionTitle}>Most Sold Near You</ThemedText>
+                <View style={{ backgroundColor: '#FFEDD5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                  <ThemedText style={{ color: '#EA580C', fontSize: 12, fontWeight: 'bold' }}>🔥 Trending</ThemedText>
                 </View>
               </View>
-            </Pressable>
-          </View>
-        )}
+
+              <Pressable onPress={() => hero.available !== false && openProductModal(hero)}>
+                <View style={[styles.heroImageContainer, hero.available === false && { opacity: 0.7 }]}>
+                  <Image
+                    source={require('../../../../assets/images/featured_food.png')}
+                    style={styles.heroImage}
+                  />
+                  <View style={styles.heroOverlay}>
+                    <ThemedText style={styles.heroTitle}>{hero.name}</ThemedText>
+                    <View style={styles.heroMeta}>
+                      <ThemedText style={styles.heroSubtitle}>₹{hero.price} • {hero.vendor?.name || 'Local Kitchen'}</ThemedText>
+                    </View>
+                    {hero.available === false && (
+                      <View style={{ marginTop: 8, alignItems: 'flex-start' }}>
+                        <ThemedText style={{ color: '#ff3b30', fontSize: 13, fontWeight: 'bold', backgroundColor: 'rgba(255,255,255,0.9)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, overflow: 'hidden' }}>Not available today</ThemedText>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </Pressable>
+            </View>
+          );
+        })()}
 
         {/* Search & Action Pills */}
         <View style={styles.modernActionRow}>
@@ -354,7 +362,8 @@ export default function Home() {
             products.map((vendor) => (
               <Pressable
                 key={vendor.id}
-                onPress={() => openProductModal(vendor)}
+                onPress={() => vendor.available !== false && openProductModal(vendor)}
+                style={{ opacity: vendor.available === false ? 0.6 : 1 }}
               >
                 <View style={[styles.modernProductCard, { backgroundColor: theme.card }]}>
                   <Image source={{ uri: vendor.image || 'https://images.unsplash.com/photo-1512152272829-e3139592d56f?w=500&q=80' }} style={styles.modernProductImage} />
@@ -374,13 +383,17 @@ export default function Home() {
                         ₹{vendor.price}
                       </ThemedText>
 
-                      <Pressable
-                        onPress={() => openProductModal(vendor)}
-                        style={[styles.modernAddButton, { backgroundColor: theme.primary + '20' }]}
-                      >
-                        <ThemedText style={{ color: theme.primary, fontWeight: '800', fontSize: 13 }}>ADD</ThemedText>
-                        <Ionicons name="add" size={16} color={theme.primary} />
-                      </Pressable>
+                      {vendor.available === false ? (
+                        <ThemedText style={{ color: '#ff3b30', fontSize: 12, fontWeight: 'bold' }}>Not available today</ThemedText>
+                      ) : (
+                        <Pressable
+                          onPress={() => openProductModal(vendor)}
+                          style={[styles.modernAddButton, { backgroundColor: theme.primary + '20' }]}
+                        >
+                          <ThemedText style={{ color: theme.primary, fontWeight: '800', fontSize: 13 }}>ADD</ThemedText>
+                          <Ionicons name="add" size={16} color={theme.primary} />
+                        </Pressable>
+                      )}
                     </View>
                   </View>
                 </View>
@@ -572,7 +585,11 @@ export default function Home() {
                       <ThemedText style={styles.calloutTitle}>{vendor.name}</ThemedText>
                       <ThemedText style={styles.calloutSub}>{vendor.category.toUpperCase()}</ThemedText>
                       <ThemedText style={styles.calloutRating}>⭐️ {vendor.rating} • {vendor.timeVal} mins</ThemedText>
-                      <ThemedText style={styles.calloutAction}>Tap to view menu</ThemedText>
+                      {vendor.available === false ? (
+                        <ThemedText style={[styles.calloutAction, { color: '#ff3b30' }]}>Not available today</ThemedText>
+                      ) : (
+                        <ThemedText style={styles.calloutAction}>Tap to view menu</ThemedText>
+                      )}
                     </View>
                   </Callout>
                 </Marker>
