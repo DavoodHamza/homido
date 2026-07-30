@@ -36,6 +36,15 @@ export default function SignupScreen() {
       Alert.alert('Missing Fields', 'Please fill in all fields.');
       return;
     }
+    if (name.trim().length < 3) {
+      Alert.alert('Invalid Name', 'Name must be at least 3 characters long.');
+      return;
+    }
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(phoneNumber.trim())) {
+      Alert.alert('Invalid Phone', 'Please enter a valid 10-digit phone number.');
+      return;
+    }
     if (password.length < 6) {
       Alert.alert('Weak Password', 'Password must be at least 6 characters.');
       return;

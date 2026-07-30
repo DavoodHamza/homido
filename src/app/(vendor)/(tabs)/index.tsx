@@ -133,6 +133,16 @@ export default function VendorDashboard() {
       Alert.alert('Error', 'Please provide all bank details and upload your FSSAI certificate.');
       return;
     }
+    const acctRegex = /^[0-9]{9,18}$/;
+    if (!acctRegex.test(bankAccountNumber.trim())) {
+      Alert.alert('Invalid Account', 'Account number must be 9 to 18 digits.');
+      return;
+    }
+    const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    if (!ifscRegex.test(bankIFSC.trim())) {
+      Alert.alert('Invalid IFSC', 'Please enter a valid IFSC code (e.g. SBIN0001234).');
+      return;
+    }
 
     setLoading(true);
     try {
