@@ -58,12 +58,44 @@ export default function VendorOrders() {
     }
   };
 
+  const handleCompleteOrder = (orderId: string) => {
+    Alert.prompt(
+      'Complete Order',
+      'Enter the 6-digit Delivery OTP provided by the customer:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Complete', 
+          onPress: async (otp?: string) => {
+            if (!otp || otp.length !== 6) {
+              Alert.alert('Invalid', 'OTP must be 6 digits');
+              return;
+            }
+            setLoading(true);
+            try {
+              await api.orders.complete(orderId, otp);
+              Alert.alert('Success', 'Order completed successfully!');
+              fetchOrders();
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'Invalid OTP');
+              setLoading(false);
+            }
+          }
+        }
+      ],
+      'plain-text',
+      '',
+      'numeric'
+    );
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Pending': return theme.error;
       case 'Preparing': return theme.accent;
       case 'On the Way': return theme.primary;
       case 'Delivered': return theme.success;
+      case 'Rejected': return theme.error;
       case 'Cancelled': return theme.textSecondary;
       default: return theme.textSecondary;
     }
@@ -120,22 +152,23 @@ export default function VendorOrders() {
           {item.status === 'Pending' && (
             <View style={styles.actionButtons}>
               <Button
-                title="Reject"
-                variant="outline"
-                size="sm"
-                style={{ marginRight: 8 }}
-                onPress={() => handleUpdateStatus(item.id, 'Cancelled')}
-              />
-              <Button
                 title="Accept"
                 size="sm"
                 onPress={() => handleUpdateStatus(item.id, 'Preparing')}
+                style={{ flex: 1, marginRight: 8 }}
+              />
+              <Button
+                title="Reject"
+                size="sm"
+                variant="outline"
+                onPress={() => handleUpdateStatus(item.id, 'Rejected')}
+                style={{ flex: 1 }}
               />
             </View>
           )}
           {item.status === 'Preparing' && (
             <Button
-              title="Mark Ready"
+              title="Mark On the Way"
               size="sm"
               onPress={() => handleUpdateStatus(item.id, 'On the Way')}
             />
@@ -144,7 +177,7 @@ export default function VendorOrders() {
             <Button
               title="Deliver"
               size="sm"
-              onPress={() => handleUpdateStatus(item.id, 'Delivered')}
+              onPress={() => handleCompleteOrder(item.id)}
             />
           )}
         </View>

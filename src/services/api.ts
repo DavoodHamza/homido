@@ -245,6 +245,11 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ status }),
       }),
+    complete: (id: string, otp: string) =>
+      request(`/orders/${id}/complete`, {
+        method: 'POST',
+        body: JSON.stringify({ otp }),
+      }),
     getVendorAnalytics: () =>
       request('/orders/vendor/analytics'),
     getAdminVendorAnalytics: () =>

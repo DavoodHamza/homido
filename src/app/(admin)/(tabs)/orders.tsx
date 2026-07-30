@@ -13,7 +13,7 @@ export default function AdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'all'>('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'refunds' | 'all'>('active');
 
   const fetchOrders = async () => {
     try {
@@ -39,6 +39,17 @@ export default function AdminOrders() {
     fetchOrders();
   }, []);
 
+  const handleUpdateStatus = async (orderId: string, nextStatus: string) => {
+    setLoading(true);
+    try {
+      await api.orders.updateStatus(orderId, nextStatus);
+      fetchOrders();
+    } catch (err: any) {
+      console.error('Could not update order status:', err);
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Pending': return theme.accent;
@@ -46,6 +57,9 @@ export default function AdminOrders() {
       case 'On the Way': return '#34C759';
       case 'Delivered': return theme.success;
       case 'Cancelled': return theme.error;
+      case 'Rejected': return theme.error;
+      case 'Refund Started': return theme.accent;
+      case 'Refund Completed': return theme.success;
       default: return theme.textSecondary;
     }
   };
@@ -57,6 +71,9 @@ export default function AdminOrders() {
       }
       if (activeTab === 'pending') {
         return order.status === 'Pending';
+      }
+      if (activeTab === 'refunds') {
+        return ['Rejected', 'Refund Started', 'Refund Completed'].includes(order.status);
       }
       return true; // All
     });
@@ -106,6 +123,26 @@ export default function AdminOrders() {
               {item.status}
             </ThemedText>
           </View>
+          {activeTab === 'refunds' && (
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+              {item.status === 'Rejected' && (
+                <Pressable
+                  style={[styles.actionBtn, { borderColor: theme.primary, backgroundColor: theme.primary + '10' }]}
+                  onPress={() => handleUpdateStatus(item.id, 'Refund Started')}
+                >
+                  <ThemedText style={[styles.actionText, { color: theme.primary }]}>Start Refund</ThemedText>
+                </Pressable>
+              )}
+              {item.status === 'Refund Started' && (
+                <Pressable
+                  style={[styles.actionBtn, { borderColor: theme.success, backgroundColor: theme.success + '10' }]}
+                  onPress={() => handleUpdateStatus(item.id, 'Refund Completed')}
+                >
+                  <ThemedText style={[styles.actionText, { color: theme.success }]}>Complete Refund</ThemedText>
+                </Pressable>
+              )}
+            </View>
+          )}
         </View>
       </Card>
     );
@@ -137,6 +174,16 @@ export default function AdminOrders() {
               style={activeTab === 'pending' ? { color: theme.primary, fontWeight: 'bold' } : { color: theme.textSecondary }}
             >
               Pending ({orders.filter(o => o.status === 'Pending').length})
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={() => setActiveTab('refunds')}
+            style={[styles.tab, activeTab === 'refunds' && [styles.activeTab, { borderBottomColor: theme.primary }]]}
+          >
+            <ThemedText
+              style={activeTab === 'refunds' ? { color: theme.primary, fontWeight: 'bold' } : { color: theme.textSecondary }}
+            >
+              Refunds ({orders.filter(o => ['Rejected', 'Refund Started', 'Refund Completed'].includes(o.status)).length})
             </ThemedText>
           </Pressable>
           <Pressable
@@ -203,6 +250,16 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     paddingBottom: 40,
+  },
+  actionBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  actionText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   orderCard: {
     padding: 0,

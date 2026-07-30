@@ -99,6 +99,14 @@ export default function OrdersScreen() {
             <Ionicons name="time-outline" size={14} color={theme.textSecondary} />
             <ThemedText style={[styles.dateText, { color: theme.textSecondary }]}>{formattedDate}</ThemedText>
           </View>
+          {item.deliveryOtp && activeTab === 'active' && (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginRight: 6 }}>Delivery OTP:</ThemedText>
+              <View style={{ backgroundColor: theme.primary + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                <ThemedText style={{ fontWeight: 'bold', color: theme.primary, letterSpacing: 2 }}>{item.deliveryOtp}</ThemedText>
+              </View>
+            </View>
+          )}
           <View style={styles.actionButtons}>
             <Pressable 
               style={[styles.actionBtn, { borderColor: theme.primary }]} 
