@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Switch, TextInput, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Switch, TextInput, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { api } from '@/services/api';
+import * as Location from 'expo-location';
 
 export default function VendorSettings() {
   const theme = useTheme();
@@ -16,6 +18,57 @@ export default function VendorSettings() {
   const [diningEnabled, setDiningEnabled] = useState(false);
   const [capacity, setCapacity] = useState('10');
   const [diningCharge, setDiningCharge] = useState('50');
+
+  const [profile, setProfile] = useState<any>(null);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await api.vendors.getProfileMe();
+        setProfile(res);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const handleUpdateLocation = async () => {
+    setLoadingLocation(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please allow location access to update your coordinates.');
+        setLoadingLocation(false);
+        return;
+      }
+      
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { latitude, longitude } = loc.coords;
+      
+      const geocoded = await Location.reverseGeocodeAsync({ latitude, longitude });
+      let addressStr = profile?.location || 'Unknown Location';
+      if (geocoded.length > 0) {
+        const item = geocoded[0];
+        addressStr = [item.street, item.district, item.city].filter(Boolean).join(', ');
+      }
+
+      await api.vendors.updateProfile({ 
+        latitude, 
+        longitude, 
+        location: addressStr 
+      });
+      
+      const res = await api.vendors.getProfileMe();
+      setProfile(res);
+      Alert.alert('Success', 'Your kitchen location has been updated successfully.');
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to update location.');
+    } finally {
+      setLoadingLocation(false);
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
@@ -106,9 +159,16 @@ export default function VendorSettings() {
           <View style={styles.linkRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name="location-outline" size={20} color={theme.text} style={{ marginRight: 12 }} />
-              <ThemedText>Pickup Location</ThemedText>
+              <View>
+                <ThemedText>Pickup Location</ThemedText>
+                {profile?.location && (
+                  <ThemedText style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>{profile.location}</ThemedText>
+                )}
+              </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+            <Pressable onPress={handleUpdateLocation} disabled={loadingLocation} style={{ padding: 8, backgroundColor: theme.primary + '20', borderRadius: 8 }}>
+              {loadingLocation ? <ActivityIndicator size="small" color={theme.primary} /> : <ThemedText style={{ color: theme.primary, fontWeight: 'bold' }}>Update</ThemedText>}
+            </Pressable>
           </View>
         </Card>
 

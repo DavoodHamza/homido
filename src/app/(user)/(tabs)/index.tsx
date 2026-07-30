@@ -116,6 +116,8 @@ export default function Home() {
           const res = await api.menu.getAll({
             category: selectedCategory,
             search: searchQuery,
+            userLat: userCoords.latitude,
+            userLng: userCoords.longitude,
           });
           setProducts(res);
         } catch (err: any) {
@@ -127,7 +129,7 @@ export default function Home() {
       fetchProducts();
     }, 0);
     return () => clearTimeout(timer);
-  }, [selectedCategory, searchQuery, minRating, sortBy, locationFilter]);
+  }, [selectedCategory, searchQuery, minRating, sortBy, locationFilter, userCoords]);
 
 
   const [productModalVisible, setProductModalVisible] = useState(false);

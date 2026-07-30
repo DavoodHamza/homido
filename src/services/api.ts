@@ -131,18 +131,24 @@ export const api = {
       if (filters.minRating) params.append('minRating', filters.minRating.toString());
       if (filters.sortBy) params.append('sortBy', filters.sortBy);
       if (filters.location) params.append('location', filters.location);
+      if (filters.userLat !== undefined) params.append('userLat', filters.userLat.toString());
+      if (filters.userLng !== undefined) params.append('userLng', filters.userLng.toString());
 
       const queryString = params.toString();
       return request(`/vendors${queryString ? `?${queryString}` : ''}`);
     },
     getById: (id: string) =>
       request(`/vendors/${id}`),
-    getProfileMe: () =>
-      request('/vendors/profile/me'),
-    register: (name: string, image?: string, timeVal?: number, category?: string, location?: string) =>
+    getProfileMe: () => request('/vendors/profile/me'),
+    updateProfile: (data: any) =>
+      request('/vendors/profile', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    register: (name: string, image?: string, timeVal?: number, category?: string, location?: string, latitude?: number, longitude?: number) =>
       request('/vendors/register', {
         method: 'POST',
-        body: JSON.stringify({ name, image, timeVal, category, location }),
+        body: JSON.stringify({ name, image, timeVal, category, location, latitude, longitude }),
       }),
     getAdminAll: () =>
       request('/vendors/admin/all'),
@@ -155,10 +161,14 @@ export const api = {
 
   // Menu Items
   menu: {
-    getAll: (filters: { category?: string; search?: string } = {}) => {
+    getAll: (filters: { category?: string; search?: string; userLat?: number; userLng?: number; maxDistanceKm?: number } = {}) => {
       const params = new URLSearchParams();
       if (filters.category) params.append('category', filters.category);
       if (filters.search) params.append('search', filters.search);
+      if (filters.userLat !== undefined) params.append('userLat', filters.userLat.toString());
+      if (filters.userLng !== undefined) params.append('userLng', filters.userLng.toString());
+      if (filters.maxDistanceKm !== undefined) params.append('maxDistanceKm', filters.maxDistanceKm.toString());
+      
       const queryString = params.toString();
       return request(`/menu/all${queryString ? `?${queryString}` : ''}`);
     },
@@ -208,6 +218,10 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ status }),
       }),
+    getVendorAnalytics: () =>
+      request('/orders/vendor/analytics'),
+    getAdminVendorAnalytics: () =>
+      request('/orders/admin/vendor-analytics'),
   },
 
   // Chat/Messaging

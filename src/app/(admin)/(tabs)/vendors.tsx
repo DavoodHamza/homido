@@ -18,7 +18,7 @@ export default function AdminVendors() {
 
   const fetchVendors = async () => {
     try {
-      const res = await api.vendors.getAdminAll();
+      const res = await api.orders.getAdminVendorAnalytics();
       setVendors(res);
     } catch (err) {
       console.error('Failed to fetch vendors for admin:', err);
@@ -103,6 +103,14 @@ export default function AdminVendors() {
           <View style={styles.detailItem}>
             <ThemedText style={styles.detailLabel}>Category</ThemedText>
             <ThemedText style={styles.detailValue}>{item.category.toUpperCase()}</ThemedText>
+          </View>
+          <View style={styles.detailItem}>
+            <ThemedText style={styles.detailLabel}>Total Sales</ThemedText>
+            <ThemedText style={[styles.detailValue, { color: theme.primary }]}>{item.totalSales || 0}</ThemedText>
+          </View>
+          <View style={styles.detailItem}>
+            <ThemedText style={styles.detailLabel}>Total Earned</ThemedText>
+            <ThemedText style={[styles.detailValue, { color: theme.success }]}>₹{item.totalAmount || 0}</ThemedText>
           </View>
           <View style={styles.detailItem}>
             <ThemedText style={styles.detailLabel}>Applied On</ThemedText>

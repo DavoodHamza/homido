@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import { api } from '@/services/api';
 import MediaPicker from '@/components/MediaPicker';
+import * as Location from 'expo-location';
 
 export default function VendorDashboard() {
   const theme = useTheme();
@@ -16,6 +17,7 @@ export default function VendorDashboard() {
 
   const [profile, setProfile] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<{ totalSales: number; totalAmount: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Kitchen Profile Form
@@ -33,6 +35,13 @@ export default function VendorDashboard() {
       if (prof) {
         const ords = await api.orders.get();
         setOrders(ords);
+
+        try {
+          const stats = await api.orders.getVendorAnalytics();
+          setAnalytics(stats);
+        } catch (err) {
+          console.error('Failed to load vendor analytics:', err);
+        }
       }
     } catch (err) {
       console.error('Failed to load vendor dashboard:', err);
@@ -56,12 +65,33 @@ export default function VendorDashboard() {
 
     setLoading(true);
     try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      let latitude: number | undefined;
+      let longitude: number | undefined;
+      let finalLocationStr = locationStr.trim();
+
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        latitude = loc.coords.latitude;
+        longitude = loc.coords.longitude;
+        
+        if (!finalLocationStr || finalLocationStr === 'Signature Towers, Hitech City') {
+          const geocoded = await Location.reverseGeocodeAsync({ latitude, longitude });
+          if (geocoded.length > 0) {
+            const item = geocoded[0];
+            finalLocationStr = [item.street, item.district, item.city].filter(Boolean).join(', ');
+          }
+        }
+      }
+
       const prof = await api.vendors.register(
         kitchenName.trim(),
         imageUrl.trim() || undefined,
         parseInt(timeVal) || 20,
         category,
-        locationStr.trim() || undefined
+        finalLocationStr || undefined,
+        latitude,
+        longitude
       );
       setProfile(prof);
       Alert.alert('Success', 'Kitchen profile registered successfully!');
@@ -85,10 +115,11 @@ export default function VendorDashboard() {
   };
 
   const getEstMonthlySales = () => {
-    // Basic projection: 30x today's revenue, or sum of last 30 days. Let's do sum of all delivered orders.
-    return orders
-      .filter((o) => o.status === 'Delivered')
-      .reduce((sum, o) => sum + Number(o.total), 0);
+    return analytics?.totalAmount || 0;
+  };
+
+  const getTotalSalesCount = () => {
+    return analytics?.totalSales || 0;
   };
 
   if (loading) {
@@ -223,16 +254,18 @@ export default function VendorDashboard() {
           </Card>
         </View>
 
-        {/* Monthly Sales */}
+        {/* All-Time Sales */}
         <Card style={styles.projectionCard}>
           <View style={styles.projectionHeader}>
             <View>
-              <ThemedText style={{ color: theme.textSecondary }}>All-Time Delivered Sales</ThemedText>
+              <ThemedText style={{ color: theme.textSecondary }}>All-Time Earned</ThemedText>
               <ThemedText style={{ fontSize: 28, fontWeight: 'bold', marginTop: 4 }}>₹{getEstMonthlySales()}</ThemedText>
             </View>
-            <View style={[styles.trendBadge, { backgroundColor: theme.success + '20' }]}>
-              <Ionicons name="trending-up" size={16} color={theme.success} />
-              <ThemedText style={{ color: theme.success, fontWeight: 'bold', marginLeft: 4 }}>Live</ThemedText>
+            <View style={{ alignItems: 'flex-end' }}>
+              <ThemedText style={{ color: theme.textSecondary }}>Total Sales</ThemedText>
+              <ThemedText style={{ fontSize: 20, fontWeight: 'bold', marginTop: 4, color: theme.primary }}>
+                {getTotalSalesCount()} Orders
+              </ThemedText>
             </View>
           </View>
 
