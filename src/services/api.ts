@@ -169,7 +169,7 @@ export const api = {
       }),
     getAdminAll: () =>
       request('/vendors/admin/all'),
-    approve: (id: string, status: 'approved' | 'rejected' | 'pending') =>
+    approve: (id: string, status: 'approved' | 'rejected' | 'pending' | 'deactivated') =>
       request(`/vendors/admin/approve/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ status }),

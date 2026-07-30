@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, Pressable, RefreshControl, ActivityIndicator, Alert, Image, Linking, Modal, TextInput } from 'react-native';
+import { View, StyleSheet, FlatList, Pressable, RefreshControl, ActivityIndicator, Alert, Image, Linking, Modal, TextInput, ScrollView } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,7 +14,7 @@ export default function AdminVendors() {
   const [vendors, setVendors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'deactivated'>('pending');
 
   const [payModalVisible, setPayModalVisible] = useState(false);
   const [payAmount, setPayAmount] = useState('');
@@ -45,7 +45,7 @@ export default function AdminVendors() {
     fetchVendors();
   }, []);
 
-  const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected') => {
+  const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected' | 'deactivated') => {
     setLoading(true);
     try {
       await api.vendors.approve(id, status);
@@ -78,6 +78,7 @@ export default function AdminVendors() {
       case 'pending': return theme.accent;
       case 'approved': return theme.success;
       case 'rejected': return theme.error;
+      case 'deactivated': return '#60646C'; // Neutral grey for deactivated
       default: return theme.textSecondary;
     }
   };
@@ -86,6 +87,9 @@ export default function AdminVendors() {
     return vendors.filter((v) => {
       if (activeTab === 'pending') {
         return v.status === 'pending';
+      }
+      if (activeTab === 'deactivated') {
+        return v.status === 'deactivated';
       }
       return v.status === 'approved';
     });
@@ -236,6 +240,19 @@ export default function AdminVendors() {
         {item.status === 'approved' && (
           <View style={[styles.actionRow, { borderTopColor: theme.border }]}>
             <Button
+              title="Deactivate"
+              variant="outline"
+              size="sm"
+              style={{ flex: 1, marginRight: 8, borderColor: theme.error }}
+              textStyle={{ color: theme.error }}
+              onPress={() => {
+                Alert.alert('Confirm', 'Are you sure you want to deactivate this vendor?', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Deactivate', style: 'destructive', onPress: () => handleUpdateStatus(item.id, 'deactivated') }
+                ]);
+              }}
+            />
+            <Button
               title="Pay Vendor"
               size="sm"
               style={{ flex: 1, backgroundColor: theme.primary }}
@@ -243,6 +260,17 @@ export default function AdminVendors() {
                 setSelectedVendorId(item.id);
                 setPayModalVisible(true);
               }}
+            />
+          </View>
+        )}
+        
+        {item.status === 'deactivated' && (
+          <View style={[styles.actionRow, { borderTopColor: theme.border }]}>
+            <Button
+              title="Activate Vendor"
+              size="sm"
+              style={{ flex: 1, backgroundColor: theme.success }}
+              onPress={() => handleUpdateStatus(item.id, 'approved')}
             />
           </View>
         )}
@@ -257,7 +285,12 @@ export default function AdminVendors() {
       <View style={styles.header}>
         <ThemedText type="title">Vendors</ThemedText>
         
-        <View style={styles.filterTabs}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          style={styles.filterTabs}
+          contentContainerStyle={{ paddingRight: 16 }}
+        >
           <Pressable
             onPress={() => setActiveTab('pending')}
             style={[styles.tab, activeTab === 'pending' && [styles.activeTab, { borderBottomColor: theme.primary }]]}
@@ -278,7 +311,17 @@ export default function AdminVendors() {
               Approved ({vendors.filter(v => v.status === 'approved').length})
             </ThemedText>
           </Pressable>
-        </View>
+          <Pressable
+            onPress={() => setActiveTab('deactivated')}
+            style={[styles.tab, activeTab === 'deactivated' && [styles.activeTab, { borderBottomColor: theme.primary }]]}
+          >
+            <ThemedText
+              style={activeTab === 'deactivated' ? { color: theme.primary, fontWeight: 'bold' } : { color: theme.textSecondary }}
+            >
+              Deactivated ({vendors.filter(v => v.status === 'deactivated').length})
+            </ThemedText>
+          </Pressable>
+        </ScrollView>
       </View>
 
       {loading && vendors.length === 0 ? (

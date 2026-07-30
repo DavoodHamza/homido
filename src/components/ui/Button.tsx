@@ -1,4 +1,4 @@
-import { Pressable, Text, StyleSheet, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, Text, StyleSheet, type PressableProps, type StyleProp, type ViewStyle, type TextStyle } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemeColor } from '@/constants/theme';
 
@@ -10,10 +10,11 @@ export type ButtonProps = PressableProps & {
   variant?: ButtonVariant;
   size?: ButtonSize;
   style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
   color?: ThemeColor;
 };
 
-export function Button({ title, variant = 'primary', size = 'md', style, color, ...rest }: ButtonProps) {
+export function Button({ title, variant = 'primary', size = 'md', style, textStyle, color, ...rest }: ButtonProps) {
   const theme = useTheme();
 
   const getBackgroundColor = (pressed: boolean) => {
@@ -64,6 +65,7 @@ export function Button({ title, variant = 'primary', size = 'md', style, color, 
           styles.textBase,
           styles[`${size}Text`],
           { color: getTextColor() },
+          textStyle,
         ]}
       >
         {title}
