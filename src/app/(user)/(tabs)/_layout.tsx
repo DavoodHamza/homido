@@ -54,24 +54,7 @@ export default function UserTabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="feed"
-        options={{
-          title: 'Feed',
-          tabBarIcon: ({ focused, color }) => (
-            <View style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: focused ? theme.primary + '20' : 'transparent',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <Ionicons name={focused ? "images" : "images-outline"} size={24} color={color} />
-            </View>
-          ),
-        }}
-      />
+
       <Tabs.Screen
         name="orders"
         options={{
