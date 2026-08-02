@@ -112,6 +112,12 @@ export default function OrdersScreen() {
             <Ionicons name="time-outline" size={14} color={theme.textSecondary} />
             <ThemedText style={[styles.dateText, { color: theme.textSecondary }]}>{formattedDate}</ThemedText>
           </View>
+          {item.vendor?.user?.phoneNumber && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <Ionicons name="call-outline" size={14} color={theme.textSecondary} style={{ marginRight: 6 }} />
+              <ThemedText style={{ fontSize: 13, color: theme.textSecondary }}>Contact: {item.vendor.user.phoneNumber}</ThemedText>
+            </View>
+          )}
           {item.deliveryOtp && activeTab === 'active' && (
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginRight: 6 }}>Delivery OTP:</ThemedText>
@@ -121,12 +127,14 @@ export default function OrdersScreen() {
             </View>
           )}
           <View style={styles.actionButtons}>
-            <Pressable 
-              style={[styles.actionBtn, { borderColor: theme.primary }]} 
-              onPress={() => router.push({ pathname: '/(user)/(tabs)/chat', params: { orderId: item.id, vendorId: item.vendor?.userId, vendorName: item.vendor?.name } })}
-            >
-              <ThemedText style={[styles.actionBtnText, { color: theme.primary }]}>Chat</ThemedText>
-            </Pressable>
+            {item.status !== 'Pending' && item.status !== 'Cancelled' && (
+              <Pressable 
+                style={[styles.actionBtn, { borderColor: theme.primary }]} 
+                onPress={() => router.push({ pathname: '/(user)/(tabs)/chat', params: { orderId: item.id, vendorId: item.vendor?.userId, vendorName: item.vendor?.name } })}
+              >
+                <ThemedText style={[styles.actionBtnText, { color: theme.primary }]}>Chat</ThemedText>
+              </Pressable>
+            )}
             {item.status === 'Delivered' ? (
               <Pressable style={[styles.actionBtn, { borderColor: theme.primary }]} onPress={() => Alert.alert('Success', 'Items added to cart!')}>
                 <ThemedText style={[styles.actionBtnText, { color: theme.primary }]}>Reorder</ThemedText>

@@ -2,14 +2,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, Pressable, RefreshControl, ActivityIndicator, Alert } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
-export default function VendorOrders() {
+export default function VendorOrdersScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   const [profile, setProfile] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
@@ -139,6 +142,15 @@ export default function VendorOrders() {
               • {lineItem.name} × {lineItem.quantity}
             </ThemedText>
           ))}
+          {item.status !== 'Pending' && item.status !== 'Cancelled' && (
+            <Pressable 
+              style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.primary + '15', padding: 8, borderRadius: 8, alignSelf: 'flex-start' }}
+              onPress={() => router.push({ pathname: '/(vendor)/(tabs)/chat', params: { orderId: item.id, customerName: item.user?.name } })}
+            >
+              <Ionicons name="chatbubble-outline" size={16} color={theme.primary} style={{ marginRight: 6 }} />
+              <ThemedText style={{ color: theme.primary, fontWeight: '600', fontSize: 13 }}>Chat with Customer</ThemedText>
+            </Pressable>
+          )}
         </View>
 
         <View style={[styles.orderFooter, { borderTopColor: theme.border }]}>
@@ -187,29 +199,29 @@ export default function VendorOrders() {
 
   if (loading && orders.length === 0) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+      <View style={[styles.container, { backgroundColor: theme.background, paddingTop: Math.max(insets.top, 16) }]}>
         <ActivityIndicator size="large" color={theme.primary} style={{ flex: 1 }} />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!profile) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+      <View style={[styles.container, { backgroundColor: theme.background, paddingTop: Math.max(insets.top, 16) }]}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <Ionicons name="storefront-outline" size={48} color={theme.textSecondary} />
           <ThemedText style={{ color: theme.textSecondary, marginTop: 12, textAlign: 'center' }}>
             Please register your kitchen dashboard profile first on the Home tab.
           </ThemedText>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   const filtered = getFilteredOrders();
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: Math.max(insets.top, 16) }]}>
       <View style={styles.header}>
         <ThemedText type="title">Orders</ThemedText>
 
@@ -256,7 +268,7 @@ export default function VendorOrders() {
           </View>
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

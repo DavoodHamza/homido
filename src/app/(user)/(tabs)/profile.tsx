@@ -20,6 +20,7 @@ const MENU_ITEMS = [
 
 const SETTINGS_ITEMS = [
   { id: '10', icon: 'share-social-outline' as const, label: 'Refer & Earn', route: '/(user)/(tabs)/wallet' },
+  { id: '11', icon: 'chatbubbles-outline' as const, label: 'Support Chat', action: 'support-chat' },
   { id: '7', icon: 'help-circle-outline' as const, label: 'Help & Support' },
   { id: '8', icon: 'document-text-outline' as const, label: 'Terms & Privacy' },
   { id: '9', icon: 'information-circle-outline' as const, label: 'About Homido' },
@@ -31,8 +32,17 @@ export default function ProfileScreen() {
   const { logout, user, updateUser } = useAuthStore();
   const [isUploading, setIsUploading] = useState(false);
 
-  const handleSettingsPress = (item: any) => {
-    if (item.route) {
+  const handleSettingsPress = async (item: any) => {
+    if (item.action === 'support-chat') {
+      try {
+        const admin = await api.users.getPrimaryAdmin();
+        if (admin && admin.id) {
+          router.push({ pathname: '/(user)/(tabs)/chat', params: { openAdminChat: 'true', adminId: admin.id, adminName: admin.name } });
+        }
+      } catch (err) {
+        Alert.alert('Error', 'Support chat is currently unavailable.');
+      }
+    } else if (item.route) {
       router.push(item.route as any);
     }
   };

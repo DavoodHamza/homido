@@ -217,7 +217,7 @@ export const api = {
       request('/users/me', {
         method: 'DELETE',
       }),
-    getPrimaryAdmin: () => request('/chat/admin/primary'),
+    getPrimaryAdmin: () => request('/users/admin'),
   },
 
   // Orders
