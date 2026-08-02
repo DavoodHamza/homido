@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, Pressable, RefreshControl, ActivityIndicator, Alert } from 'react-native';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,12 +38,11 @@ export default function OrdersScreen() {
     }
   };
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
+  useFocusEffect(
+    useCallback(() => {
       fetchOrders();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
+    }, [])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

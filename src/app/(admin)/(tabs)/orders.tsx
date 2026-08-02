@@ -5,6 +5,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card } from '@/components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { api } from '@/services/api';
 
 export default function AdminOrders() {
@@ -27,12 +28,11 @@ export default function AdminOrders() {
     }
   };
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
+  useFocusEffect(
+    useCallback(() => {
       fetchOrders();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
+    }, [])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card';
 
 import { api } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 
 export default function VendorOrdersScreen() {
   const theme = useTheme();
@@ -37,12 +37,11 @@ export default function VendorOrdersScreen() {
     }
   };
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
+  useFocusEffect(
+    useCallback(() => {
       fetchOrders();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
+    }, [])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
