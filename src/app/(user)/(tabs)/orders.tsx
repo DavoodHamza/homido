@@ -1,11 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, Image, Pressable, RefreshControl, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, Pressable, RefreshControl, ActivityIndicator, Alert } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { api } from '@/services/api';
+import { api, SERVER_ROOT } from '@/services/api';
+
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=200&q=80';
+
+// Resolves relative /uploads/... paths into full server URLs
+const getImageUrl = (path?: string | null): string => {
+  if (!path) return FALLBACK_IMAGE;
+  if (path.startsWith('http')) return path;
+  return `${SERVER_ROOT}${path}`;
+};
 
 export default function OrdersScreen() {
   const theme = useTheme();
@@ -78,8 +88,10 @@ export default function OrdersScreen() {
       <Pressable style={[styles.orderCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <View style={styles.orderTop}>
           <Image
-            source={{ uri: item.vendor?.image || 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=200&q=80' }}
-            style={styles.orderImage}
+            source={{ uri: getImageUrl(item.vendor?.image) }}
+            style={[styles.orderImage, { backgroundColor: theme.border }]}
+            contentFit="cover"
+            transition={200}
           />
           <View style={styles.orderDetails}>
             <ThemedText style={styles.vendorName}>{item.vendor?.name || 'Kitchen'}</ThemedText>
@@ -88,60 +100,74 @@ export default function OrdersScreen() {
             </ThemedText>
             <View style={styles.orderMeta}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <ThemedText style={styles.orderTotal}>₹{item.total}</ThemedText>
+                <ThemedText style={[styles.orderTotal, { color: theme.primary }]}>₹{item.total}</ThemedText>
                 {item.deliveryCharge > 0 && (
                   <ThemedText style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 4 }}>
                     (+₹{item.deliveryCharge} Del.)
                   </ThemedText>
                 )}
               </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View style={[styles.statusBadge, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
-                  <ThemedText style={[styles.statusText, { color: theme.textSecondary, textTransform: 'capitalize' }]}>{item.deliveryType || 'pickup'}</ThemedText>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: statusStyle.color + '15' }]}>
-                  <View style={[styles.statusDot, { backgroundColor: statusStyle.dot }]} />
-                  <ThemedText style={[styles.statusText, { color: statusStyle.color }]}>{item.status}</ThemedText>
-                </View>
+              <View style={[styles.statusBadge, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
+                <ThemedText style={[styles.statusText, { color: theme.textSecondary, textTransform: 'capitalize' }]}>{item.deliveryType || 'pickup'}</ThemedText>
               </View>
             </View>
           </View>
         </View>
         <View style={[styles.orderBottom, { borderTopColor: theme.border }]}>
-          <View style={styles.dateRow}>
-            <Ionicons name="time-outline" size={14} color={theme.textSecondary} />
-            <ThemedText style={[styles.dateText, { color: theme.textSecondary }]}>{formattedDate}</ThemedText>
+          {/* Date Row */}
+          <View style={styles.metaRow}>
+            <View style={styles.dateRow}>
+              <Ionicons name="time-outline" size={13} color={theme.textSecondary} />
+              <ThemedText style={[styles.dateText, { color: theme.textSecondary }]}>{formattedDate}</ThemedText>
+            </View>
+            {/* Status badge inline with date */}
+            <View style={[styles.statusBadge, { backgroundColor: statusStyle.color + '15' }]}>
+              <View style={[styles.statusDot, { backgroundColor: statusStyle.dot }]} />
+              <ThemedText style={[styles.statusText, { color: statusStyle.color }]}>{item.status}</ThemedText>
+            </View>
           </View>
+
+          {/* Contact Number Row */}
           {item.vendor?.user?.phoneNumber && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-              <Ionicons name="call-outline" size={14} color={theme.textSecondary} style={{ marginRight: 6 }} />
-              <ThemedText style={{ fontSize: 13, color: theme.textSecondary }}>Contact: {item.vendor.user.phoneNumber}</ThemedText>
+            <View style={styles.infoRow}>
+              <Ionicons name="call-outline" size={13} color={theme.textSecondary} />
+              <ThemedText style={[styles.infoText, { color: theme.textSecondary }]}>
+                {item.vendor.user.phoneNumber}
+              </ThemedText>
             </View>
           )}
+
+          {/* Delivery OTP Row */}
           {item.deliveryOtp && activeTab === 'active' && (
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginRight: 6 }}>Delivery OTP:</ThemedText>
-              <View style={{ backgroundColor: theme.primary + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                <ThemedText style={{ fontWeight: 'bold', color: theme.primary, letterSpacing: 2 }}>{item.deliveryOtp}</ThemedText>
+            <View style={styles.otpRow}>
+              <Ionicons name="keypad-outline" size={13} color={theme.textSecondary} />
+              <ThemedText style={[styles.infoText, { color: theme.textSecondary }]}>OTP:</ThemedText>
+              <View style={[styles.otpBadge, { backgroundColor: theme.primary + '18', borderColor: theme.primary + '40' }]}>
+                <ThemedText style={[styles.otpText, { color: theme.primary }]}>{item.deliveryOtp}</ThemedText>
               </View>
             </View>
           )}
+
+          {/* Action Buttons Row */}
           <View style={styles.actionButtons}>
             {item.status !== 'Pending' && item.status !== 'Cancelled' && (
               <Pressable 
-                style={[styles.actionBtn, { borderColor: theme.primary }]} 
+                style={[styles.actionBtn, { borderColor: theme.primary, backgroundColor: theme.primary + '10' }]} 
                 onPress={() => router.push({ pathname: '/(user)/(tabs)/chat', params: { orderId: item.id, vendorId: item.vendor?.userId, vendorName: item.vendor?.name } })}
               >
+                <Ionicons name="chatbubble-outline" size={14} color={theme.primary} />
                 <ThemedText style={[styles.actionBtnText, { color: theme.primary }]}>Chat</ThemedText>
               </Pressable>
             )}
             {item.status === 'Delivered' ? (
-              <Pressable style={[styles.actionBtn, { borderColor: theme.primary }]} onPress={() => Alert.alert('Success', 'Items added to cart!')}>
-                <ThemedText style={[styles.actionBtnText, { color: theme.primary }]}>Reorder</ThemedText>
+              <Pressable style={[styles.actionBtn, { borderColor: theme.border }]} onPress={() => Alert.alert('Success', 'Items added to cart!')}>
+                <Ionicons name="refresh-outline" size={14} color={theme.textSecondary} />
+                <ThemedText style={[styles.actionBtnText, { color: theme.textSecondary }]}>Reorder</ThemedText>
               </Pressable>
             ) : (
-              <Pressable style={[styles.actionBtn, { borderColor: theme.primary }]} onPress={() => fetchOrders()}>
-                <ThemedText style={[styles.actionBtnText, { color: theme.primary }]}>Refresh</ThemedText>
+              <Pressable style={[styles.actionBtn, { borderColor: theme.border }]} onPress={() => fetchOrders()}>
+                <Ionicons name="sync-outline" size={14} color={theme.textSecondary} />
+                <ThemedText style={[styles.actionBtnText, { color: theme.textSecondary }]}>Refresh</ThemedText>
               </Pressable>
             )}
           </View>
@@ -152,8 +178,8 @@ export default function OrdersScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background, paddingTop: Math.max(insets.top, 16) }]}>
-      <View style={styles.headerBar}>
-        <ThemedText style={styles.headerTitle}>My Orders</ThemedText>
+      <View style={[styles.headerBar, { borderBottomColor: theme.border }]}>
+        <ThemedText style={[styles.headerTitle, { color: theme.text }]}>My Orders</ThemedText>
       </View>
       
       <View style={styles.tabBar}>
@@ -217,12 +243,13 @@ const styles = StyleSheet.create({
   },
   headerBar: {
     paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 0.5,
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   tabBar: {
     flexDirection: 'row',
@@ -283,7 +310,6 @@ const styles = StyleSheet.create({
   orderTotal: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FF7A00',
   },
   statusBadge: {
     flexDirection: 'row',
@@ -303,20 +329,48 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   orderBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'column',
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderTopWidth: 1,
+    gap: 10,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   dateText: {
     fontSize: 12,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  infoText: {
+    fontSize: 13,
+  },
+  otpRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  otpBadge: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  otpText: {
+    fontWeight: '700',
+    fontSize: 14,
+    letterSpacing: 3,
   },
   actionButtons: {
     flexDirection: 'row',

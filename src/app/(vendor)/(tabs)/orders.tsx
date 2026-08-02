@@ -4,7 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+
 import { api } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -154,6 +154,7 @@ export default function VendorOrdersScreen() {
         </View>
 
         <View style={[styles.orderFooter, { borderTopColor: theme.border }]}>
+          {/* Status Row */}
           <View style={styles.statusContainer}>
             <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status) }]} />
             <ThemedText style={{ fontSize: 14, fontWeight: '600', color: getStatusColor(item.status) }}>
@@ -161,36 +162,46 @@ export default function VendorOrdersScreen() {
             </ThemedText>
           </View>
 
+          {/* Action Buttons */}
           {item.status === 'Pending' && (
             <View style={styles.actionButtons}>
-              <Button
-                title="Accept"
-                size="sm"
+              <Pressable
+                style={[styles.actionBtn, { backgroundColor: theme.primary, borderColor: theme.primary }]}
                 onPress={() => handleUpdateStatus(item.id, 'Preparing')}
-                style={{ flex: 1, marginRight: 8 }}
-              />
-              <Button
-                title="Reject"
-                size="sm"
-                variant="outline"
+              >
+                <Ionicons name="checkmark" size={14} color="#FFF" />
+                <ThemedText style={[styles.actionBtnText, { color: '#FFF' }]}>Accept</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.actionBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
                 onPress={() => handleUpdateStatus(item.id, 'Rejected')}
-                style={{ flex: 1 }}
-              />
+              >
+                <Ionicons name="close" size={14} color={theme.error} />
+                <ThemedText style={[styles.actionBtnText, { color: theme.error }]}>Reject</ThemedText>
+              </Pressable>
             </View>
           )}
           {item.status === 'Preparing' && (
-            <Button
-              title={item.deliveryType === 'delivery' ? "Mark On the Way" : "Mark Ready for Pickup"}
-              size="sm"
+            <Pressable
+              style={[styles.actionBtn, { backgroundColor: theme.primary, borderColor: theme.primary, flex: 1 }]}
               onPress={() => handleUpdateStatus(item.id, 'On the Way')}
-            />
+            >
+              <Ionicons name="bicycle" size={14} color="#FFF" />
+              <ThemedText style={[styles.actionBtnText, { color: '#FFF' }]}>
+                {item.deliveryType === 'delivery' ? 'Mark On the Way' : 'Ready for Pickup'}
+              </ThemedText>
+            </Pressable>
           )}
           {item.status === 'On the Way' && (
-            <Button
-              title={item.deliveryType === 'delivery' ? "Deliver" : "Complete Pickup"}
-              size="sm"
+            <Pressable
+              style={[styles.actionBtn, { backgroundColor: theme.primary, borderColor: theme.primary, flex: 1 }]}
               onPress={() => handleCompleteOrder(item.id)}
-            />
+            >
+              <Ionicons name="checkmark-circle" size={14} color="#FFF" />
+              <ThemedText style={[styles.actionBtnText, { color: '#FFF' }]}>
+                {item.deliveryType === 'delivery' ? 'Mark Delivered' : 'Complete Pickup'}
+              </ThemedText>
+            </Pressable>
           )}
         </View>
       </Card>
@@ -320,12 +331,10 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   orderFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#F9F9F910',
+    flexDirection: 'column',
+    padding: 14,
     borderTopWidth: 1,
+    gap: 12,
   },
   statusContainer: {
     flexDirection: 'row',
@@ -339,6 +348,22 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: 'row',
+    gap: 10,
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  actionBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   emptyContainer: {
     alignItems: 'center',
