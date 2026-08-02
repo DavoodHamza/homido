@@ -117,6 +117,7 @@ export default function UserTabLayout() {
         name="wallet"
         options={{
           title: 'Wallet',
+          href: null,
           tabBarIcon: ({ focused, color }) => (
             <View style={{
               width: 44,

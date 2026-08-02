@@ -13,24 +13,34 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/use-theme';
 import { api } from '@/services/api';
+import { useAuthStore } from '@/hooks/useAuthStore';
 
 export default function WalletScreen() {
   const theme = useTheme();
+  const { user: authUser, updateUser } = useAuthStore();
   const [wallet, setWallet] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<any>(authUser);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const fetchWallet = async () => {
     try {
-      const [walletData, userData] = await Promise.all([
-        api.wallets.getMe(),
-        api.users.me(),
-      ]);
-      setWallet(walletData);
+      setErrorMsg(null);
+      const userData = await api.users.me();
       setUserProfile(userData);
-    } catch (err) {
-      console.error('Failed to fetch wallet', err);
+      updateUser(userData);
+      
+      try {
+        const walletData = await api.wallets.getMe();
+        setWallet(walletData);
+      } catch (walletErr: any) {
+        console.warn('Wallet endpoint not available yet (restart backend).');
+        setErrorMsg('Wallet connection issue: ' + (walletErr.message || 'Check backend'));
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch user', err);
+      setErrorMsg('Failed to load profile: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -70,6 +80,12 @@ export default function WalletScreen() {
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: theme.text }]}>My Wallet</Text>
       </View>
+
+      {errorMsg && (
+        <View style={{ backgroundColor: '#F4433620', padding: 12, marginHorizontal: 20, borderRadius: 8, marginBottom: 12 }}>
+          <Text style={{ color: '#F44336', textAlign: 'center' }}>{errorMsg}</Text>
+        </View>
+      )}
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}

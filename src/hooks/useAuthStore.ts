@@ -13,6 +13,7 @@ interface UserProfile {
   addressLandmark?: string;
   addressPhone?: string;
   addressSecondaryPhone?: string;
+  referralCode?: string;
 }
 
 interface AuthState {

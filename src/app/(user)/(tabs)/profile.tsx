@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Image, Alert, ActivityIndicator, Share } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,10 +15,11 @@ const MENU_ITEMS = [
   { id: '3', icon: 'card-outline' as const, label: 'Payment Methods' },
   { id: '4', icon: 'notifications-outline' as const, label: 'Notifications', badge: '3' },
   { id: '5', icon: 'star-outline' as const, label: 'My Reviews' },
-  { id: '6', icon: 'gift-outline' as const, label: 'Rewards & Offers' },
+  { id: '6', icon: 'gift-outline' as const, label: 'Rewards & Offers', route: '/(user)/(tabs)/wallet' },
 ];
 
 const SETTINGS_ITEMS = [
+  { id: '10', icon: 'share-social-outline' as const, label: 'Refer & Earn', route: '/(user)/(tabs)/wallet' },
   { id: '7', icon: 'help-circle-outline' as const, label: 'Help & Support' },
   { id: '8', icon: 'document-text-outline' as const, label: 'Terms & Privacy' },
   { id: '9', icon: 'information-circle-outline' as const, label: 'About Homido' },
@@ -28,6 +29,12 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const { logout, user, updateUser } = useAuthStore();
   const [isUploading, setIsUploading] = useState(false);
+
+  const handleSettingsPress = (item: any) => {
+    if (item.route) {
+      router.push(item.route as any);
+    }
+  };
 
   const handlePickImage = async () => {
     const lib = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -136,6 +143,7 @@ export default function ProfileScreen() {
             <Pressable
               key={item.id}
               style={[styles.menuItem, index < SETTINGS_ITEMS.length - 1 && { borderBottomWidth: 0.5, borderBottomColor: theme.border }]}
+              onPress={() => handleSettingsPress(item)}
             >
               <View style={styles.menuLeft}>
                 <View style={[styles.menuIconBg, { backgroundColor: theme.textSecondary + '15' }]}>
