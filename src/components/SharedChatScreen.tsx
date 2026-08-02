@@ -295,23 +295,18 @@ export function SharedChatScreen({ role }: { role: 'user' | 'vendor' | 'admin' }
                   <Ionicons name="chevron-back" size={20} color={theme.text} />
                 </Pressable>
                 
-                <View style={[styles.headerProfile, { flex: 1, justifyContent: 'center' }]}>
+                <View style={[styles.headerProfile, { flex: 1, justifyContent: 'center', marginHorizontal: 10 }]}>
                   <Image 
                     source={{ uri: `https://ui-avatars.com/api/?name=${selectedPartner?.name}&background=random` }} 
                     style={styles.headerAvatar}
                   />
-                  <View>
-                    <ThemedText style={[styles.headerName, { color: theme.text }]} numberOfLines={1}>{selectedPartner?.name}</ThemedText>
+                  <View style={{ flex: 1 }}>
+                    <ThemedText style={[styles.headerName, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">{selectedPartner?.name}</ThemedText>
                     {selectedPartner?.orderId && (
-                      <ThemedText style={{ fontSize: 11, color: theme.textSecondary, textAlign: 'center' }}>Order #{selectedPartner.orderId.substring(0,6).toUpperCase()}</ThemedText>
+                      <ThemedText style={{ fontSize: 11, color: theme.textSecondary }} numberOfLines={1}>Ord #{selectedPartner.orderId.substring(0,8).toUpperCase()}</ThemedText>
                     )}
                   </View>
                 </View>
-
-                <Pressable style={[styles.headerSettings, { backgroundColor: theme.primary + '20' }]}>
-                  <Ionicons name="options-outline" size={20} color={theme.primary} />
-                  <View style={styles.notificationDot} />
-                </Pressable>
               </View>
 
               {/* Chat Body */}
@@ -546,9 +541,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
+    gap: 12,
   },
   modernBackBtn: {
     width: 40,
