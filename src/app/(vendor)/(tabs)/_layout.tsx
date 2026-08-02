@@ -1,10 +1,12 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/use-theme';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 
 export default function VendorTabLayout() {
   const theme = useTheme();
+  const hasUnread = useUnreadMessages();
 
   return (
     <Tabs
@@ -53,7 +55,23 @@ export default function VendorTabLayout() {
         options={{
           title: 'Chat',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles" size={size} color={color} />
+            <View style={{ width: size, height: size }}>
+              <Ionicons name="chatbubbles" size={size} color={color} />
+              {hasUnread && (
+                <View style={{
+                  position: 'absolute',
+                  top: -2,
+                  right: -4,
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
+                  backgroundColor: '#EF4444',
+                  borderWidth: 1.5,
+                  borderColor: theme.card,
+                  zIndex: 999,
+                }} />
+              )}
+            </View>
           ),
         }}
       />

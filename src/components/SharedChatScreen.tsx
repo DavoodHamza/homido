@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '@/services/api';
 import { useAuthStore } from '@/hooks/useAuthStore';
+import { useChatStore } from '@/hooks/useChatStore';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Image } from 'expo-image';
 
@@ -35,6 +36,9 @@ export function SharedChatScreen({ role }: { role: 'user' | 'vendor' | 'admin' }
   const [messages, setMessages] = useState<any[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [newMessage, setNewMessage] = useState('');
+  
+  // Unread / Read tracking — from global store
+  const { readConversationIds, markAsRead } = useChatStore();
   
   // Voice Mock State
   const [isRecording, setIsRecording] = useState(false);
@@ -98,11 +102,16 @@ export function SharedChatScreen({ role }: { role: 'user' | 'vendor' | 'admin' }
     const isGroup = isGroupFlag || partnerOrGroup.isGroup;
     const orderId = partnerOrGroup.orderId;
     const partner = partnerOrGroup.otherUser || partnerOrGroup;
+    const convKey = orderId ? `order-${orderId}` : partner.id;
+    
     setSelectedPartner({ ...partner, isGroup, orderId });
     setChatModalVisible(true);
     setMessages([]);
     setNewMessage('');
     setMessagesLoading(true);
+    
+    // Mark this conversation as read globally
+    markAsRead(convKey);
     
     try {
       const msgs = await api.chat.getConversation(partner.id, orderId);
@@ -170,8 +179,11 @@ export function SharedChatScreen({ role }: { role: 'user' | 'vendor' | 'admin' }
 
   const renderConversation = ({ item }: { item: any }) => {
     const timeFormatted = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const isVendor = item.otherUser?.role === 'vendor';
-    const isGroup = item.isGroup;
+    const convKey = item.orderId ? `order-${item.orderId}` : item.otherUser?.id;
+    const isRead = readConversationIds.includes(convKey);
+    // Unread = last message was from the other person AND we haven't opened it
+    const lastMsgIsIncoming = item.lastSenderId && item.lastSenderId !== user?.id;
+    const hasUnread = !isRead && lastMsgIsIncoming;
 
     return (
       <Pressable 
@@ -183,19 +195,31 @@ export function SharedChatScreen({ role }: { role: 'user' | 'vendor' | 'admin' }
             source={{ uri: `https://ui-avatars.com/api/?name=${item.otherUser?.name || 'Support'}&background=random` }} 
             style={styles.avatar}
           />
+          {/* Green unread dot */}
+          {hasUnread && (
+            <View style={styles.unreadDot} />
+          )}
         </View>
         <View style={styles.messageContent}>
           <View style={styles.messageTop}>
-            <ThemedText style={styles.senderName}>{item.otherUser?.name}</ThemedText>
-            <ThemedText style={[styles.timeText, { color: theme.textSecondary }]}>{timeFormatted}</ThemedText>
+            <ThemedText style={[styles.senderName, hasUnread && { fontWeight: '800' }]}>{item.otherUser?.name}</ThemedText>
+            <ThemedText style={[styles.timeText, { color: hasUnread ? '#22C55E' : theme.textSecondary }]}>{timeFormatted}</ThemedText>
           </View>
           <View style={styles.messageBottom}>
             <ThemedText
               numberOfLines={1}
-              style={[styles.lastMessage, { color: theme.textSecondary }]}
+              style={[styles.lastMessage, { color: hasUnread ? theme.text : theme.textSecondary, fontWeight: hasUnread ? '600' : '400' }]}
             >
               {item.lastMessage?.startsWith('[Voice]') ? '🎙 Voice Message' : item.lastMessage}
             </ThemedText>
+            {/* Green double checkmark when read by the other person */}
+            {item.lastMessageIsRead && !lastMsgIsIncoming && (
+              <Ionicons name="checkmark-done" size={16} color="#22C55E" />
+            )}
+            {/* Grey checkmark when sent but not yet read by the other person */}
+            {!item.lastMessageIsRead && !lastMsgIsIncoming && item.lastMessage && (
+              <Ionicons name="checkmark" size={16} color={theme.textSecondary} />
+            )}
           </View>
         </View>
       </Pressable>
@@ -370,9 +394,18 @@ export function SharedChatScreen({ role }: { role: 'user' | 'vendor' | 'admin' }
                             </View>
                           </View>
                           {/* Time below message */}
-                          <ThemedText style={[styles.msgTime, isOwn ? { textAlign: 'right', marginRight: 4 } : { textAlign: 'left', marginLeft: 4 }]}>
-                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </ThemedText>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: isOwn ? 'flex-end' : 'flex-start' }}>
+                            <ThemedText style={[styles.msgTime, isOwn ? { marginRight: 4 } : { marginLeft: 4 }]}>
+                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </ThemedText>
+                            {isOwn && (
+                              <Ionicons 
+                                name={msg.isRead ? "checkmark-done" : "checkmark"} 
+                                size={14} 
+                                color={msg.isRead ? "#22C55E" : theme.textSecondary} 
+                              />
+                            )}
+                          </View>
                         </View>
                       );
                     })}
@@ -492,6 +525,17 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 26,
     backgroundColor: '#EEE',
+  },
+  unreadDot: {
+    position: 'absolute',
+    bottom: 1,
+    right: 1,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#22C55E',
+    borderWidth: 2,
+    borderColor: '#FFF',
   },
   messageContent: {
     flex: 1,

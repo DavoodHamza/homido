@@ -2,9 +2,11 @@ import { Tabs } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, View } from 'react-native';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 
 export default function UserTabLayout() {
   const theme = useTheme();
+  const hasUnread = useUnreadMessages();
 
   return (
     <Tabs
@@ -88,8 +90,23 @@ export default function UserTabLayout() {
               backgroundColor: focused ? theme.primary + '20' : 'transparent',
               alignItems: 'center',
               justifyContent: 'center',
+              position: 'relative',
             }}>
               <Ionicons name={focused ? "chatbubbles" : "chatbubbles-outline"} size={24} color={color} />
+              {hasUnread && (
+                <View style={{
+                  position: 'absolute',
+                  top: 7,
+                  right: 8,
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
+                  backgroundColor: '#EF4444',
+                  borderWidth: 1.5,
+                  borderColor: theme.card,
+                  zIndex: 999,
+                }} />
+              )}
             </View>
           ),
         }}
