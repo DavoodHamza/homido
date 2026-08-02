@@ -423,7 +423,36 @@ export default function VendorSettings() {
             logout();
             router.replace('/(auth)/login');
           }}
-          style={{ marginBottom: 40 }} 
+          style={{ marginBottom: 16 }} 
+        />
+
+        <Button 
+          title="Delete Account" 
+          variant="secondary" 
+          onPress={() => {
+            Alert.alert(
+              'Delete Account',
+              'Are you sure you want to delete your vendor account and user profile? This action cannot be undone.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await api.users.deleteAccount();
+                      logout();
+                      router.replace('/(auth)/login');
+                    } catch (error: any) {
+                      Alert.alert('Error', error.message || 'Failed to delete account');
+                    }
+                  }
+                }
+              ]
+            );
+          }}
+          style={{ marginBottom: 40, borderColor: theme.error, borderWidth: 1 }} 
+          textStyle={{ color: theme.error }}
         />
       </ScrollView>
     </SafeAreaView>

@@ -160,6 +160,36 @@ export default function ProfileScreen() {
           <ThemedText style={[styles.logoutText, { color: theme.error }]}>Logout</ThemedText>
         </Pressable>
 
+        {/* Delete Account */}
+        <Pressable
+          style={[styles.logoutButton, { backgroundColor: theme.card, borderColor: theme.error }]}
+          onPress={() => {
+            Alert.alert(
+              'Delete Account',
+              'Are you sure you want to delete your account? This action cannot be undone.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await api.users.deleteAccount();
+                      logout();
+                      router.replace('/(auth)/login');
+                    } catch (error: any) {
+                      Alert.alert('Error', error.message || 'Failed to delete account');
+                    }
+                  }
+                }
+              ]
+            );
+          }}
+        >
+          <Ionicons name="trash-outline" size={22} color={theme.error} />
+          <ThemedText style={[styles.logoutText, { color: theme.error }]}>Delete Account</ThemedText>
+        </Pressable>
+
         <ThemedText style={[styles.version, { color: theme.textSecondary }]}>Homido v1.0.0</ThemedText>
       </ScrollView>
     </SafeAreaView>

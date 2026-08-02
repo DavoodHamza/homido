@@ -98,6 +98,31 @@ export default function Home() {
   // Dynamic lists from backend
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [banners, setBanners] = useState<string[]>([]);
+  const [activeBanner, setActiveBanner] = useState(0);
+
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const res = await api.settings.get('BANNERS') as any;
+        if (res && res.value) {
+          const parsed = JSON.parse(res.value);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setBanners(parsed);
+          }
+        }
+      } catch (e) {}
+    };
+    fetchBanners();
+  }, []);
+
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    const interval = setInterval(() => {
+      setActiveBanner(prev => (prev + 1) % banners.length);
+    }, 7000);
+    return () => clearInterval(interval);
+  }, [banners.length]);
 
   // Selected Vendor Menu Modal
   const [selectedVendor, setSelectedVendor] = useState<any | null>(null);
@@ -277,8 +302,33 @@ export default function Home() {
           </Pressable>
           </View>
         </View>
+
+        {/* Ad Banners */}
+        {banners.length > 0 && (
+          <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
+            <View style={{ width: '100%', height: 160, borderRadius: 16, overflow: 'hidden', backgroundColor: theme.card, position: 'relative' }}>
+              <Image source={{ uri: banners[activeBanner] }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+              {banners.length > 1 && (
+                <View style={{ position: 'absolute', bottom: 12, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+                  {banners.map((_, idx) => (
+                    <View 
+                      key={idx} 
+                      style={{ 
+                        width: activeBanner === idx ? 20 : 8, 
+                        height: 8, 
+                        borderRadius: 4, 
+                        backgroundColor: activeBanner === idx ? theme.primary : 'rgba(255,255,255,0.6)' 
+                      }} 
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* Categories */}
-        <View style={{ marginTop: 16, marginBottom: 24 }}>
+        <View style={{ marginTop: 20, marginBottom: 24 }}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
             {categories.map((cat) => (
               <Pressable

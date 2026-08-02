@@ -213,6 +213,10 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
+    deleteAccount: () =>
+      request('/users/me', {
+        method: 'DELETE',
+      }),
     getPrimaryAdmin: () => request('/chat/admin/primary'),
   },
 

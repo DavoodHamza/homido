@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, TextInput, Image } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import { router } from 'expo-router';
 import { api } from '@/services/api';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function AdminDashboard() {
   const theme = useTheme();
@@ -16,7 +17,9 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deliveryCharge, setDeliveryCharge] = useState('0');
+  const [banners, setBanners] = useState<string[]>([]);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   const loadData = async () => {
     try {
@@ -26,6 +29,10 @@ export default function AdminDashboard() {
       setOrders(o);
       const chargeRes = await api.settings.get('DELIVERY_CHARGE') as any;
       if (chargeRes && chargeRes.value) setDeliveryCharge(chargeRes.value);
+      const bannerRes = await api.settings.get('BANNERS') as any;
+      if (bannerRes && bannerRes.value) {
+        try { setBanners(JSON.parse(bannerRes.value)); } catch(e){}
+      }
     } catch (err) {
       console.error('Failed to load admin stats:', err);
     } finally {
@@ -60,6 +67,42 @@ export default function AdminDashboard() {
     } finally {
       setSavingSettings(false);
     }
+  };
+
+  const handleAddBanner = async () => {
+    try {
+      const lib = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (lib.status !== 'granted') {
+        Alert.alert('Permission Required', 'Need photo library access to upload a banner.');
+        return;
+      }
+      
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+      setUploadingBanner(true);
+      const uploadedUrl = await api.upload.image(result.assets[0].uri, result.assets[0].fileName ?? undefined, result.assets[0].mimeType ?? 'image/jpeg');
+      
+      const newBanners = [...banners, uploadedUrl];
+      setBanners(newBanners);
+      await api.settings.set('BANNERS', JSON.stringify(newBanners));
+    } catch(e: any) {
+      Alert.alert('Upload Failed', e.message || 'Could not upload banner');
+    } finally {
+      setUploadingBanner(false);
+    }
+  };
+
+  const handleRemoveBanner = async (index: number) => {
+    const newBanners = banners.filter((_, i) => i !== index);
+    setBanners(newBanners);
+    setUploadingBanner(true);
+    await api.settings.set('BANNERS', JSON.stringify(newBanners));
+    setUploadingBanner(false);
   };
 
   if (loading) {
@@ -119,6 +162,37 @@ export default function AdminDashboard() {
                 {savingSettings ? <ActivityIndicator color="#FFF" size="small" /> : <ThemedText style={{ color: '#FFF', fontWeight: 'bold' }}>Save</ThemedText>}
               </Pressable>
             </View>
+          </View>
+        </View>
+
+        {/* Ad Banners Settings */}
+        <View style={styles.section}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>Home Banners (Ads)</ThemedText>
+          <View style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border, paddingVertical: 16, flexDirection: 'column', alignItems: 'stretch' }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <View>
+                <ThemedText style={{ fontWeight: '600', fontSize: 15 }}>Manage Banners</ThemedText>
+                <ThemedText style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>Auto-rotates every 7s on user home screen</ThemedText>
+              </View>
+              <Pressable onPress={handleAddBanner} disabled={uploadingBanner} style={{ backgroundColor: theme.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}>
+                {uploadingBanner ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <ThemedText style={{ color: '#FFF', fontSize: 13, fontWeight: 'bold' }}>+ Add</ThemedText>
+                )}
+              </Pressable>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+              {banners.map((url, i) => (
+                <View key={i} style={{ width: 200, height: 100, borderRadius: 8, overflow: 'hidden', position: 'relative', backgroundColor: theme.border }}>
+                  <Image source={{ uri: url }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+                  <Pressable onPress={() => handleRemoveBanner(i)} style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: 4 }}>
+                    <Ionicons name="trash" size={16} color="#FFF" />
+                  </Pressable>
+                </View>
+              ))}
+              {banners.length === 0 && <ThemedText style={{ color: theme.textSecondary, fontSize: 13, marginVertical: 12 }}>No banners added.</ThemedText>}
+            </ScrollView>
           </View>
         </View>
 
