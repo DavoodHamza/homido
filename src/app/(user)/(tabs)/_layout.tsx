@@ -44,6 +44,7 @@ export default function UserTabLayout() {
             <View style={{
               width: 44,
               height: 44,
+              marginTop: 12,
               borderRadius: 22,
               backgroundColor: focused ? theme.primary + '20' : 'transparent',
               alignItems: 'center',
@@ -63,6 +64,7 @@ export default function UserTabLayout() {
             <View style={{
               width: 44,
               height: 44,
+              marginTop: 12,
               borderRadius: 22,
               backgroundColor: focused ? theme.primary + '20' : 'transparent',
               alignItems: 'center',
@@ -81,6 +83,7 @@ export default function UserTabLayout() {
             <View style={{
               width: 44,
               height: 44,
+              marginTop: 12,
               borderRadius: 22,
               backgroundColor: focused ? theme.primary + '20' : 'transparent',
               alignItems: 'center',
@@ -99,6 +102,7 @@ export default function UserTabLayout() {
             <View style={{
               width: 44,
               height: 44,
+              marginTop: 12,
               borderRadius: 22,
               backgroundColor: focused ? theme.primary + '20' : 'transparent',
               alignItems: 'center',
