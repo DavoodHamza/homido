@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useThemeStore } from '@/hooks/useThemeStore';
 import { CartProvider } from '@/context/CartContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -20,9 +21,10 @@ export default function RootLayout() {
   const isDark = themeMode === 'dark';
 
   return (
-    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-      <CartProvider>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
+    <SafeAreaProvider>
+      <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+        <CartProvider>
+          <StatusBar style={isDark ? 'light' : 'dark'} />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -32,5 +34,6 @@ export default function RootLayout() {
         </Stack>
       </CartProvider>
     </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

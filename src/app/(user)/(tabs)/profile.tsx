@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Pressable, Image, Alert, ActivityIndicato
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -27,6 +27,7 @@ const SETTINGS_ITEMS = [
 
 export default function ProfileScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { logout, user, updateUser } = useAuthStore();
   const [isUploading, setIsUploading] = useState(false);
 
@@ -69,7 +70,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: Math.max(insets.top, 16) }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Profile Header */}
         <View style={styles.profileHeader}>
@@ -200,7 +201,7 @@ export default function ProfileScreen() {
 
         <ThemedText style={[styles.version, { color: theme.textSecondary }]}>Homido v1.0.0</ThemedText>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

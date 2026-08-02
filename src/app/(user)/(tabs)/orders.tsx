@@ -4,11 +4,12 @@ import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '@/services/api';
 
 export default function OrdersScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,7 +143,7 @@ export default function OrdersScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: Math.max(insets.top, 16) }]}>
       <View style={styles.headerBar}>
         <ThemedText style={styles.headerTitle}>My Orders</ThemedText>
       </View>
@@ -198,7 +199,7 @@ export default function OrdersScreen() {
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -9,7 +9,7 @@ import {
   Pressable,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/use-theme';
 import { api } from '@/services/api';
@@ -17,6 +17,7 @@ import { useAuthStore } from '@/hooks/useAuthStore';
 
 export default function WalletScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { user: authUser, updateUser } = useAuthStore();
   const [wallet, setWallet] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(authUser);
@@ -76,7 +77,7 @@ export default function WalletScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: Math.max(insets.top, 16) }]}>
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: theme.text }]}>My Wallet</Text>
       </View>
@@ -166,7 +167,7 @@ export default function WalletScreen() {
         {/* Spacer for bottom tab bar */}
         <View style={{ height: 100 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
