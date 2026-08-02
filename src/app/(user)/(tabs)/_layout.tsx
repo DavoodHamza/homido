@@ -114,6 +114,25 @@ export default function UserTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="wallet"
+        options={{
+          title: 'Wallet',
+          tabBarIcon: ({ focused, color }) => (
+            <View style={{
+              width: 44,
+              height: 44,
+              marginTop: 12,
+              borderRadius: 22,
+              backgroundColor: focused ? theme.primary + '20' : 'transparent',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Ionicons name={focused ? "wallet" : "wallet-outline"} size={24} color={color} />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="vendor-test"
         options={{
           href: null, // hidden from tab bar

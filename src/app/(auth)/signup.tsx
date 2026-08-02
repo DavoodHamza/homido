@@ -27,6 +27,7 @@ export default function SignupScreen() {
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [role, setRole] = useState<'user' | 'vendor'>('user');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -52,7 +53,7 @@ export default function SignupScreen() {
 
     setLoading(true);
     try {
-      await api.auth.signup(name.trim(), phoneNumber.trim(), password, role);
+      await api.auth.signup(name.trim(), phoneNumber.trim(), password, role, referralCode.trim() || undefined);
       const res = await api.auth.login(phoneNumber.trim(), password);
       login(res.accessToken, res.user);
 
@@ -206,6 +207,20 @@ export default function SignupScreen() {
                     color="#6B8E70"
                   />
                 </Pressable>
+              </View>
+
+              {/* Referral Code Input */}
+              <View style={styles.inputWrapper}>
+                <Ionicons name="gift" size={20} color="#6B8E70" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Referral Code (Optional)"
+                  placeholderTextColor="#8BA989"
+                  autoCapitalize="characters"
+                  value={referralCode}
+                  onChangeText={setReferralCode}
+                  editable={!loading}
+                />
               </View>
 
               {/* Register Button */}

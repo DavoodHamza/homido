@@ -118,10 +118,10 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ phoneNumber, password: pass }),
       }),
-    signup: (name: string, phoneNumber: string, pass: string, role: string = 'user') =>
+    signup: (name: string, phoneNumber: string, pass: string, role: string = 'user', referralCode?: string) =>
       request('/auth/signup', {
         method: 'POST',
-        body: JSON.stringify({ name, phoneNumber, password: pass, role }),
+        body: JSON.stringify({ name, phoneNumber, password: pass, role, referralCode }),
       }),
   },
 
@@ -304,6 +304,11 @@ export const api = {
       }),
     delete: (id: string) => 
       request(`/stories/${id}`, { method: 'DELETE' }),
+  },
+
+  // Wallets
+  wallets: {
+    getMe: () => request('/wallets/me'),
   },
 };
 

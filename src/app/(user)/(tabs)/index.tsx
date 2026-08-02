@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View, ActivityIndicator, Alert, Dimensions, Platform, RefreshControl } from 'react-native';
 import { useCart } from '@/context/CartContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import RazorpayCheckout from 'react-native-razorpay';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
@@ -246,6 +246,17 @@ export default function Home() {
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [menuLoading, setMenuLoading] = useState(false);
   const { items: cartItems, addToCart, updateQuantity, clearCart, cartTotal, itemCount, deliveryOptions, setDeliveryOption, globalDeliveryCharge } = useCart();
+  const [walletBalance, setWalletBalance] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isLoggedIn) {
+        api.wallets.getMe().then((res: any) => {
+          setWalletBalance(Number(res?.balance) || 0);
+        }).catch(() => {});
+      }
+    }, [isLoggedIn])
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -341,7 +352,16 @@ export default function Home() {
         deliveryType: deliveryOptions[c.vendorId] || 'pickup',
       }));
       const orderRes = await api.orders.cartCheckout(itemsPayload);
-      
+      if (orderRes.grandTotal === 0) {
+        // Order fully paid via wallet
+        setMenuModalVisible(false);
+        clearCart();
+        Alert.alert('Success', 'Your order has been placed successfully using your wallet balance!', [
+          { text: 'OK', onPress: () => router.replace('/(user)/(tabs)/orders') },
+        ]);
+        return;
+      }
+
       const options = {
         description: 'Homido Order Payment',
         image: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=200&q=80',
@@ -356,7 +376,7 @@ export default function Home() {
       try {
         const paymentData = await RazorpayCheckout.open(options);
         // Verify payment
-        await api.orders.verifyCartPayment(paymentData);
+        await api.orders.verifyCartPayment({ ...paymentData, orderId: orderRes.orders[0].id });
         setMenuModalVisible(false);
         clearCart();
         Alert.alert('Success', 'Your order has been placed successfully!', [
@@ -1015,9 +1035,21 @@ export default function Home() {
               <View style={[styles.checkoutFooter, { borderTopColor: theme.border }]}>
                 <View style={styles.checkoutTotalRow}>
                   <ThemedText style={{ fontSize: 16, fontWeight: 'bold' }}>Total:</ThemedText>
-                  <ThemedText style={{ fontSize: 20, fontWeight: 'bold', color: theme.primary }}>
-                    ₹{getCartTotal()}
-                  </ThemedText>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    {walletBalance > 0 && (
+                      <ThemedText style={{ fontSize: 12, color: theme.textSecondary, textDecorationLine: 'line-through' }}>
+                        ₹{getCartTotal()}
+                      </ThemedText>
+                    )}
+                    <ThemedText style={{ fontSize: 20, fontWeight: 'bold', color: theme.primary }}>
+                      ₹{Math.max(0, getCartTotal() - walletBalance).toFixed(2)}
+                    </ThemedText>
+                    {walletBalance > 0 && (
+                      <ThemedText style={{ fontSize: 12, color: '#4CAF50', fontWeight: 'bold' }}>
+                        Wallet Applied (-₹{Math.min(walletBalance, getCartTotal()).toFixed(2)})
+                      </ThemedText>
+                    )}
+                  </View>
                 </View>
                 <Pressable
                   style={[styles.checkoutBtn, { backgroundColor: theme.primary }]}
