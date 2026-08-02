@@ -7,6 +7,7 @@ import { useCart } from '@/context/CartContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import RazorpayCheckout from 'react-native-razorpay';
+import { useVideoPlayer, VideoView } from 'expo-video';
 
 // react-native-maps doesn't support web — conditionally import for native only
 let MapView: any;
@@ -23,6 +24,40 @@ import { useThemeStore } from '@/hooks/useThemeStore';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import { api } from '@/services/api';
 import * as Location from 'expo-location';
+
+// Custom Video Components for expo-video
+function StoryPreviewVideo({ mediaUrl }: { mediaUrl: string }) {
+  const player = useVideoPlayer(mediaUrl, player => {
+    player.loop = false;
+    player.muted = true;
+    player.pause();
+  });
+  
+  return (
+    <VideoView 
+      player={player} 
+      style={{ width: '100%', height: '100%' }} 
+      contentFit="cover"
+      nativeControls={false}
+    />
+  );
+}
+
+function FullScreenStoryVideo({ mediaUrl }: { mediaUrl: string }) {
+  const player = useVideoPlayer(mediaUrl, player => {
+    player.loop = true;
+    player.play();
+  });
+
+  return (
+    <VideoView 
+      player={player} 
+      style={StyleSheet.absoluteFill} 
+      contentFit="contain"
+      nativeControls={false}
+    />
+  );
+}
 
 // Dynamic categories will be fetched from the backend.
 // We prepended 'All Food' to this list manually.
@@ -123,6 +158,87 @@ export default function Home() {
     }, 7000);
     return () => clearInterval(interval);
   }, [banners.length]);
+
+  // Stories
+  const [vendorStories, setVendorStories] = useState<any[]>([]);
+  const [storyModalVisible, setStoryModalVisible] = useState(false);
+  const [activeStoryIndex, setActiveStoryIndex] = useState(0);
+  const [activeStoryGroup, setActiveStoryGroup] = useState<any>(null);
+  const [storyProgress, setStoryProgress] = useState(0);
+
+  useEffect(() => {
+    const fetchStories = async () => {
+      try {
+        const stories = await api.stories.getActive();
+        // Group stories by vendor
+        const grouped = stories.reduce((acc: any, story: any) => {
+          if (!acc[story.vendorId]) {
+            acc[story.vendorId] = {
+              vendorId: story.vendorId,
+              vendor: story.vendor,
+              stories: []
+            };
+          }
+          acc[story.vendorId].stories.push(story);
+          return acc;
+        }, {});
+        setVendorStories(Object.values(grouped));
+      } catch (e) {}
+    };
+    fetchStories();
+  }, []);
+
+  // Story Viewer Timer
+  useEffect(() => {
+    let interval: any;
+    if (storyModalVisible && activeStoryGroup) {
+      interval = setInterval(() => {
+        setStoryProgress(prev => {
+          if (prev >= 100) {
+            // Next story
+            if (activeStoryIndex < activeStoryGroup.stories.length - 1) {
+              setActiveStoryIndex(activeStoryIndex + 1);
+              return 0;
+            } else {
+              setStoryModalVisible(false);
+              return 0;
+            }
+          }
+          return prev + 2; // Every 100ms +2% = 5000ms total
+        });
+      }, 100);
+    } else {
+      setStoryProgress(0);
+    }
+    return () => clearInterval(interval);
+  }, [storyModalVisible, activeStoryGroup, activeStoryIndex]);
+
+  const openStoryViewer = (group: any) => {
+    setActiveStoryGroup(group);
+    setActiveStoryIndex(0);
+    setStoryProgress(0);
+    setStoryModalVisible(true);
+  };
+  
+  const handleStoryTap = (evt: any) => {
+    const { locationX } = evt.nativeEvent;
+    const { width } = Dimensions.get('window');
+    if (locationX < width / 3) {
+      // Go back
+      if (activeStoryIndex > 0) {
+        setActiveStoryIndex(activeStoryIndex - 1);
+        setStoryProgress(0);
+      }
+    } else {
+      // Go forward
+      if (activeStoryIndex < activeStoryGroup.stories.length - 1) {
+        setActiveStoryIndex(activeStoryIndex + 1);
+        setStoryProgress(0);
+      } else {
+        setStoryModalVisible(false);
+      }
+    }
+  };
 
   // Selected Vendor Menu Modal
   const [selectedVendor, setSelectedVendor] = useState<any | null>(null);
@@ -324,6 +440,34 @@ export default function Home() {
                 </View>
               )}
             </View>
+          </View>
+        )}
+
+        {/* Vendor Stories Bar */}
+        {vendorStories.length > 0 && (
+          <View style={{ marginTop: 16, marginBottom: 4 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 16 }}>
+              {vendorStories.map((group: any) => {
+                const firstStory = group.stories[0];
+                const isPreviewVideo = firstStory?.mediaUrl && firstStory.mediaUrl.match(/\.(mp4|mov|m4v)$/i);
+                return (
+                <Pressable key={group.vendorId} onPress={() => openStoryViewer(group)} style={{ alignItems: 'center', width: 72 }}>
+                  <View style={{ width: 68, height: 68, borderRadius: 34, padding: 3, backgroundColor: theme.primary }}>
+                    {isPreviewVideo ? (
+                      <View style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: '#FFF', borderWidth: 2, borderColor: theme.card, overflow: 'hidden' }}>
+                        <StoryPreviewVideo mediaUrl={firstStory.mediaUrl} />
+                      </View>
+                    ) : (
+                      <Image 
+                        source={{ uri: firstStory?.mediaUrl || group.vendor?.image || 'https://images.unsplash.com/photo-1512152272829-e3139592d56f?w=100&q=80' }} 
+                        style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: '#FFF', borderWidth: 2, borderColor: theme.card }} 
+                      />
+                    )}
+                  </View>
+                  <ThemedText style={{ fontSize: 12, marginTop: 4, textAlign: 'center', fontWeight: '500' }} numberOfLines={1}>{group.vendor?.name}</ThemedText>
+                </Pressable>
+              )})}
+            </ScrollView>
           </View>
         )}
 
@@ -724,6 +868,56 @@ export default function Home() {
             )}
           </Pressable>
         </Pressable>
+      </Modal>
+
+      {/* Story Viewer Modal */}
+      <Modal visible={storyModalVisible} animationType="fade" transparent={false} onRequestClose={() => setStoryModalVisible(false)}>
+        {activeStoryGroup && activeStoryGroup.stories[activeStoryIndex] && (() => {
+          const story = activeStoryGroup.stories[activeStoryIndex];
+          const isVideo = story.mediaUrl && story.mediaUrl.match(/\.(mp4|mov|m4v)$/i);
+          return (
+          <View style={{ flex: 1, backgroundColor: '#000' }}>
+            {isVideo ? (
+              <FullScreenStoryVideo mediaUrl={story.mediaUrl} />
+            ) : (
+              <Image 
+                source={{ uri: story.mediaUrl }} 
+                style={StyleSheet.absoluteFill} 
+                resizeMode="contain" 
+              />
+            )}
+            
+            {/* Overlay for darker background behind header */}
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 120, backgroundColor: 'rgba(0,0,0,0.4)' }} />
+
+            <SafeAreaView style={{ flex: 1 }}>
+              {/* Progress Bars */}
+              <View style={{ flexDirection: 'row', gap: 4, paddingHorizontal: 8, marginTop: 8 }}>
+                {activeStoryGroup.stories.map((_: any, idx: number) => (
+                  <View key={idx} style={{ flex: 1, height: 3, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }}>
+                    {idx < activeStoryIndex && <View style={{ flex: 1, backgroundColor: '#FFF', borderRadius: 2 }} />}
+                    {idx === activeStoryIndex && <View style={{ width: `${storyProgress}%`, height: '100%', backgroundColor: '#FFF', borderRadius: 2 }} />}
+                  </View>
+                ))}
+              </View>
+
+              {/* Header */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, zIndex: 10 }}>
+                <Image source={{ uri: activeStoryGroup.vendor?.image || 'https://images.unsplash.com/photo-1512152272829-e3139592d56f?w=100&q=80' }} style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: '#FFF' }} />
+                <ThemedText style={{ color: '#FFF', fontWeight: 'bold', marginLeft: 12, fontSize: 16, textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 }}>
+                  {activeStoryGroup.vendor?.name}
+                </ThemedText>
+                <View style={{ flex: 1 }} />
+                <Pressable onPress={() => setStoryModalVisible(false)} style={{ padding: 8 }}>
+                  <Ionicons name="close" size={28} color="#FFF" />
+                </Pressable>
+              </View>
+
+              {/* Tap Zones */}
+              <Pressable style={{ flex: 1 }} onPress={handleStoryTap} />
+            </SafeAreaView>
+          </View>
+        )})()}
       </Modal>
 
       {/* Cart / Checkout Drawer Modal */}

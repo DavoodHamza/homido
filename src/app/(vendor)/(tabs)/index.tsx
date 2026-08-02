@@ -37,6 +37,9 @@ export default function VendorDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<{ totalSales: number; totalAmount: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  const [myStories, setMyStories] = useState<any[]>([]);
+  const [uploadingStory, setUploadingStory] = useState(false);
 
   // Kitchen Profile Form
   const [kitchenName, setKitchenName] = useState('');
@@ -76,6 +79,13 @@ export default function VendorDashboard() {
           setAnalytics(stats);
         } catch (err) {
           console.error('Failed to load vendor analytics:', err);
+        }
+        
+        try {
+          const stories = await api.stories.getMyStories();
+          setMyStories(stories);
+        } catch (err) {
+          console.error('Failed to load stories:', err);
         }
       }
     } catch (err) {
@@ -121,6 +131,52 @@ export default function VendorDashboard() {
     } finally {
       setUploadingFssai(false);
     }
+  };
+
+  const handleAddStory = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please allow access to your photo library to upload a story.');
+        return;
+      }
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images', 'videos'],
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (pickerResult.canceled || !pickerResult.assets?.length) return;
+      const asset = pickerResult.assets[0];
+
+      setUploadingStory(true);
+      const isVideo = asset.type === 'video' || asset.mimeType?.startsWith('video/');
+      const uploadedUrl = isVideo 
+        ? await api.upload.video(asset.uri, asset.fileName ?? undefined, asset.mimeType ?? 'video/mp4')
+        : await api.upload.image(asset.uri, asset.fileName ?? undefined, asset.mimeType ?? 'image/jpeg');
+      
+      const newStory = await api.stories.add(uploadedUrl);
+      setMyStories([newStory, ...myStories]);
+      Alert.alert('Success', 'Story uploaded successfully.');
+    } catch (err: any) {
+      Alert.alert('Upload Error', err.message || 'Failed to upload story. Please try again.');
+    } finally {
+      setUploadingStory(false);
+    }
+  };
+
+  const handleDeleteStory = (id: string) => {
+    Alert.alert('Delete Story', 'Are you sure you want to remove this story?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try {
+          await api.stories.delete(id);
+          setMyStories(myStories.filter(s => s.id !== id));
+        } catch(e: any) {
+          Alert.alert('Error', e.message);
+        }
+      }}
+    ]);
   };
 
 
@@ -449,6 +505,33 @@ export default function VendorDashboard() {
               <ThemedText style={styles.metricValue}>{getTotalSalesCount()} Total</ThemedText>
             </View>
           </ScrollView>
+
+          {/* Stories Section */}
+          <View style={{ marginTop: 8, marginBottom: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <ThemedText type="subtitle" style={{ fontSize: 20, color: '#111' }}>My Stories</ThemedText>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+              <Pressable onPress={handleAddStory} disabled={uploadingStory} style={{ width: 80, alignItems: 'center', gap: 6 }}>
+                <View style={{ width: 64, height: 64, borderRadius: 32, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF' }}>
+                  {uploadingStory ? <ActivityIndicator size="small" color={theme.primary} /> : <Ionicons name="add" size={32} color={theme.primary} />}
+                </View>
+                <ThemedText style={{ fontSize: 12, color: theme.textSecondary, fontWeight: '600' }}>Add Story</ThemedText>
+              </Pressable>
+
+              {myStories.map(story => (
+                <View key={story.id} style={{ width: 80, alignItems: 'center', gap: 6 }}>
+                  <View style={{ width: 64, height: 64, borderRadius: 32, padding: 2, backgroundColor: theme.primary }}>
+                    <Image source={{ uri: story.mediaUrl }} style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFF' }} />
+                  </View>
+                  <Pressable onPress={() => handleDeleteStory(story.id)} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                    <Ionicons name="trash" size={12} color="#ff3b30" />
+                    <ThemedText style={{ fontSize: 12, color: '#ff3b30', fontWeight: '600' }}>Delete</ThemedText>
+                  </Pressable>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
 
           {/* List Section */}
           <View style={styles.listSection}>

@@ -292,5 +292,19 @@ export const api = {
     delete: (id: string) => 
       request(`/categories/${id}`, { method: 'DELETE' }),
   },
+  
+  // Stories
+  stories: {
+    getActive: () => request('/stories'),
+    getMyStories: () => request('/stories/me'),
+    add: (mediaUrl: string) => 
+      request('/stories', {
+        method: 'POST',
+        body: JSON.stringify({ mediaUrl }),
+      }),
+    delete: (id: string) => 
+      request(`/stories/${id}`, { method: 'DELETE' }),
+  },
 };
+
 
