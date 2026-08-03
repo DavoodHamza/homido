@@ -1308,7 +1308,8 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    marginBottom: 0,
+    marginTop: 12,
+    marginBottom: 16,
   },
   categoryScroll: {
     marginHorizontal: -16,
