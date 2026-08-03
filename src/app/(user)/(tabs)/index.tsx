@@ -247,12 +247,16 @@ export default function Home() {
   const [menuLoading, setMenuLoading] = useState(false);
   const { items: cartItems, addToCart, updateQuantity, clearCart, cartTotal, itemCount, deliveryOptions, setDeliveryOption, globalDeliveryCharge } = useCart();
   const [walletBalance, setWalletBalance] = useState(0);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
   useFocusEffect(
     useCallback(() => {
       if (isLoggedIn) {
         api.wallets.getMe().then((res: any) => {
           setWalletBalance(Number(res?.balance) || 0);
+        }).catch(() => {});
+        api.menu.getFavorites().then((favs: any[]) => {
+          setFavoriteIds(new Set(favs.map(f => f.id)));
         }).catch(() => {});
       }
     }, [isLoggedIn])
@@ -299,10 +303,39 @@ export default function Home() {
 
   const [productModalVisible, setProductModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [productReviews, setProductReviews] = useState<any[]>([]);
 
-  const openProductModal = (product: any) => {
+  const openProductModal = async (product: any) => {
     setSelectedProduct(product);
     setProductModalVisible(true);
+    setProductReviews([]);
+    try {
+      const reviews = await api.menu.getReviews(product.id);
+      setProductReviews(reviews);
+    } catch (e) {}
+  };
+
+  const handleToggleFavorite = async (e: any, productId: string) => {
+    e.stopPropagation();
+    if (!isLoggedIn) {
+      Alert.alert('Sign in Required', 'Please sign in to add favorites.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign In', onPress: () => router.push('/(auth)/login') }
+      ]);
+      return;
+    }
+    try {
+      const newIds = new Set(favoriteIds);
+      if (newIds.has(productId)) {
+        newIds.delete(productId);
+      } else {
+        newIds.add(productId);
+      }
+      setFavoriteIds(newIds);
+      await api.menu.toggleFavorite(productId);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
 
@@ -330,7 +363,9 @@ export default function Home() {
     }
     if (cartItems.length === 0) return;
 
-    if (!user?.addressLocation || !user?.addressPhone) {
+    const allPickup = cartItems.every(c => deliveryOptions[c.vendorId] === 'pickup');
+
+    if (!allPickup && (!user?.addressLocation || !user?.addressPhone)) {
       setMenuModalVisible(false);
       Alert.alert(
         'Address Required',
@@ -581,13 +616,22 @@ export default function Home() {
                   <Image source={{ uri: vendor.image || 'https://images.unsplash.com/photo-1512152272829-e3139592d56f?w=500&q=80' }} style={styles.modernProductImage} />
 
                   <View style={styles.modernProductInfo}>
-                    <View>
-                      <ThemedText style={[styles.modernProductTitle, { color: theme.text }]} numberOfLines={2}>{vendor.name}</ThemedText>
-                      {vendor.vendor && (
-                        <ThemedText style={{ color: theme.textSecondary, fontSize: 12, marginTop: 4, fontWeight: '600' }}>
-                          from {vendor.vendor.name}
-                        </ThemedText>
-                      )}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <View style={{ flex: 1, paddingRight: 8 }}>
+                        <ThemedText style={[styles.modernProductTitle, { color: theme.text }]} numberOfLines={2}>{vendor.name}</ThemedText>
+                        {vendor.vendor && (
+                          <ThemedText style={{ color: theme.textSecondary, fontSize: 12, marginTop: 4, fontWeight: '600' }}>
+                            from {vendor.vendor.name}
+                          </ThemedText>
+                        )}
+                      </View>
+                      <Pressable onPress={(e) => handleToggleFavorite(e, vendor.id)} style={{ padding: 4 }}>
+                        <Ionicons 
+                          name={favoriteIds.has(vendor.id) ? "heart" : "heart-outline"} 
+                          size={22} 
+                          color={favoriteIds.has(vendor.id) ? "#ff3b30" : theme.textSecondary} 
+                        />
+                      </Pressable>
                     </View>
 
                     <View style={styles.modernProductBottom}>
@@ -862,6 +906,20 @@ export default function Home() {
                   {selectedProduct.description || 'No description available for this item.'}
                 </ThemedText>
 
+                {productReviews.length > 0 && (
+                  <View style={{ marginTop: 16, padding: 12, backgroundColor: theme.background, borderRadius: 12 }}>
+                    <ThemedText style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 8 }}>Top Review</ThemedText>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <Ionicons name="star" size={14} color="#FFD700" />
+                      <ThemedText style={{ fontSize: 13, fontWeight: 'bold', marginLeft: 4 }}>{productReviews[0].rating}</ThemedText>
+                      <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginLeft: 8 }}>- {productReviews[0].user?.name}</ThemedText>
+                    </View>
+                    {productReviews[0].comment ? (
+                      <ThemedText style={{ fontSize: 13, fontStyle: 'italic', color: theme.textSecondary }}>"{productReviews[0].comment}"</ThemedText>
+                    ) : null}
+                  </View>
+                )}
+
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
                   <ThemedText style={{ fontSize: 24, fontWeight: 'bold', color: theme.primary }}>
                     ₹{selectedProduct.price}
@@ -1033,6 +1091,34 @@ export default function Home() {
 
             {cartItems.length > 0 && (
               <View style={[styles.checkoutFooter, { borderTopColor: theme.border }]}>
+                {/* Delivery Address Section */}
+                {!cartItems.every(c => deliveryOptions[c.vendorId] === 'pickup') && (
+                  <View style={{ marginBottom: 16, padding: 12, backgroundColor: theme.background, borderRadius: 8 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <ThemedText style={{ fontSize: 14, fontWeight: 'bold', color: theme.text }}>Delivery Address</ThemedText>
+                      <Pressable onPress={() => { setMenuModalVisible(false); router.push('/(user)/address-modal' as any); }}>
+                        <ThemedText style={{ fontSize: 13, color: theme.primary, fontWeight: '600' }}>
+                          {user?.addressLocation ? 'Edit' : 'Add'}
+                        </ThemedText>
+                      </Pressable>
+                    </View>
+                    {user?.addressLocation ? (
+                      <View>
+                        <ThemedText style={{ fontSize: 13, color: theme.textSecondary }} numberOfLines={2}>
+                          {user.addressLocation} {user.addressLandmark ? `(${user.addressLandmark})` : ''}
+                        </ThemedText>
+                        <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                          Phone: {user.addressPhone}
+                        </ThemedText>
+                      </View>
+                    ) : (
+                      <ThemedText style={{ fontSize: 13, color: '#ff3b30' }}>
+                        Address is required for delivery.
+                      </ThemedText>
+                    )}
+                  </View>
+                )}
+
                 <View style={styles.checkoutTotalRow}>
                   <ThemedText style={{ fontSize: 16, fontWeight: 'bold' }}>Total:</ThemedText>
                   <View style={{ alignItems: 'flex-end' }}>

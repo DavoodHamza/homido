@@ -203,6 +203,19 @@ export const api = {
       }),
     delete: (id: string) =>
       request(`/menu/${id}`, { method: 'DELETE' }),
+      
+    // Favorites
+    getFavorites: () => request('/menu/favorites/me'),
+    toggleFavorite: (id: string) => 
+      request(`/menu/${id}/favorite`, { method: 'POST' }),
+      
+    // Reviews
+    getReviews: (id: string) => request(`/menu/${id}/reviews`),
+    addReview: (id: string, rating: number, comment: string) => 
+      request(`/menu/${id}/reviews`, {
+        method: 'POST',
+        body: JSON.stringify({ rating, comment }),
+      }),
   },
 
   // Users

@@ -159,9 +159,12 @@ export default function OrdersScreen() {
               </Pressable>
             )}
             {item.status === 'Delivered' ? (
-              <Pressable style={[styles.actionBtn, { borderColor: theme.border }]} onPress={() => Alert.alert('Success', 'Items added to cart!')}>
-                <Ionicons name="refresh-outline" size={14} color={theme.textSecondary} />
-                <ThemedText style={[styles.actionBtnText, { color: theme.textSecondary }]}>Reorder</ThemedText>
+              <Pressable 
+                style={[styles.actionBtn, { borderColor: theme.primary, backgroundColor: theme.primary + '10' }]} 
+                onPress={() => router.push({ pathname: '/(user)/add-review-modal', params: { items: JSON.stringify(item.items) } } as any)}
+              >
+                <Ionicons name="star-outline" size={14} color={theme.primary} />
+                <ThemedText style={[styles.actionBtnText, { color: theme.primary }]}>Leave Review</ThemedText>
               </Pressable>
             ) : (
               <Pressable style={[styles.actionBtn, { borderColor: theme.border }]} onPress={() => fetchOrders()}>

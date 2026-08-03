@@ -10,7 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { api } from '@/services/api';
 
 const MENU_ITEMS = [
-  { id: '1', icon: 'heart-outline' as const, label: 'Favorites', badge: '12' },
+  { id: '1', icon: 'heart-outline' as const, label: 'Favorites', route: '/(user)/favorites' },
   { id: '2', icon: 'location-outline' as const, label: 'Saved Addresses', route: '/(user)/address-modal' },
   { id: '3', icon: 'card-outline' as const, label: 'Payment Methods' },
   { id: '4', icon: 'notifications-outline' as const, label: 'Notifications', badge: '3' },
