@@ -75,7 +75,8 @@ export function SharedChatScreen({ role }: { role: 'user' | 'vendor' | 'admin' }
       setOpenedFromExternal(true);
       openConversation({
         id: adminId,
-        name: adminName || 'Support Admin'
+        name: 'Support Team',
+        role: 'admin'
       });
     } else if (openOrderId) {
       router.setParams({ vendorId: '', vendorName: '', orderId: '', customerName: '' });
@@ -323,11 +324,13 @@ export function SharedChatScreen({ role }: { role: 'user' | 'vendor' | 'admin' }
                 
                 <View style={[styles.headerProfile, { flex: 1, justifyContent: 'center', marginHorizontal: 10 }]}>
                   <Image 
-                    source={{ uri: `https://ui-avatars.com/api/?name=${selectedPartner?.name}&background=${theme.primary.replace('#', '')}&color=fff` }} 
+                    source={{ uri: `https://ui-avatars.com/api/?name=${selectedPartner?.role === 'admin' ? 'Support Team' : selectedPartner?.name}&background=${theme.primary.replace('#', '')}&color=fff` }} 
                     style={styles.headerAvatar}
                   />
                   <View style={{ flex: 1 }}>
-                    <ThemedText style={[styles.headerName, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">{selectedPartner?.name}</ThemedText>
+                    <ThemedText style={[styles.headerName, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">
+                      {selectedPartner?.role === 'admin' ? 'Support Team' : selectedPartner?.name}
+                    </ThemedText>
                     {selectedPartner?.orderId && (
                       <ThemedText style={{ fontSize: 11, color: theme.textSecondary }} numberOfLines={1}>Ord #{selectedPartner.orderId.substring(0,8).toUpperCase()}</ThemedText>
                     )}
