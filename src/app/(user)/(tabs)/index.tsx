@@ -22,7 +22,7 @@ if (Platform.OS !== 'web') {
 
 import { useThemeStore } from '@/hooks/useThemeStore';
 import { useAuthStore } from '@/hooks/useAuthStore';
-import { api } from '@/services/api';
+import { api, SERVER_ROOT } from '@/services/api';
 import * as Location from 'expo-location';
 
 // Custom Video Components for expo-video
@@ -61,6 +61,14 @@ function FullScreenStoryVideo({ mediaUrl }: { mediaUrl: string }) {
 
 // Dynamic categories will be fetched from the backend.
 // We prepended 'All Food' to this list manually.
+
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=200&q=80';
+
+const getImageUrl = (path?: string | null): string => {
+  if (!path) return FALLBACK_IMAGE;
+  if (path.startsWith('http')) return path;
+  return `${SERVER_ROOT}${path}`;
+};
 
 export default function Home() {
   const theme = useTheme();
@@ -613,7 +621,7 @@ export default function Home() {
                 style={{ opacity: vendor.available === false ? 0.6 : 1 }}
               >
                 <View style={[styles.modernProductCard, { backgroundColor: theme.card }]}>
-                  <Image source={{ uri: vendor.image || 'https://images.unsplash.com/photo-1512152272829-e3139592d56f?w=500&q=80' }} style={styles.modernProductImage} />
+                  <Image source={{ uri: getImageUrl(vendor.image) }} style={styles.modernProductImage} />
 
                   <View style={styles.modernProductInfo}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -897,7 +905,7 @@ export default function Home() {
 
                 {selectedProduct.image && (
                   <Image
-                    source={{ uri: selectedProduct.image }}
+                    source={{ uri: getImageUrl(selectedProduct.image) }}
                     style={{ width: '100%', height: 200, borderRadius: 16, marginTop: 16 }}
                   />
                 )}
