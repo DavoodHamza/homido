@@ -1,37 +1,37 @@
 import React, { useEffect, useMemo } from 'react';
-import { View, StyleSheet, Image, Animated } from 'react-native';
+import { View, StyleSheet, Image, Animated, Dimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import { useTheme } from '@/hooks/use-theme';
 
+const { width } = Dimensions.get('window');
+
 export default function SplashScreen() {
   const theme = useTheme();
   const fadeAnim = useMemo(() => new Animated.Value(0), []);
-  const scaleAnim = useMemo(() => new Animated.Value(0.8), []);
-  const taglineAnim = useMemo(() => new Animated.Value(0), []);
+  const scaleAnim = useMemo(() => new Animated.Value(0.9), []);
+  const translateYAnim = useMemo(() => new Animated.Value(20), []);
 
   useEffect(() => {
-    // Animate logo in
+    // Modern smooth entrance animation
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 800,
+        duration: 1000,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        friction: 6,
+        friction: 8,
         tension: 40,
         useNativeDriver: true,
       }),
-    ]).start(() => {
-      // Then animate tagline
-      Animated.timing(taglineAnim, {
-        toValue: 1,
-        duration: 600,
+      Animated.timing(translateYAnim, {
+        toValue: 0,
+        duration: 1000,
         useNativeDriver: true,
-      }).start();
-    });
+      }),
+    ]).start();
 
     // Navigate after 2.5 seconds
     const timer = setTimeout(() => {
@@ -48,7 +48,7 @@ export default function SplashScreen() {
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, [fadeAnim, scaleAnim, taglineAnim]);
+  }, [fadeAnim, scaleAnim, translateYAnim]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -57,7 +57,7 @@ export default function SplashScreen() {
           styles.logoContainer,
           {
             opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
+            transform: [{ scale: scaleAnim }, { translateY: translateYAnim }],
           },
         ]}
       >
@@ -67,23 +67,6 @@ export default function SplashScreen() {
           resizeMode="contain"
         />
       </Animated.View>
-
-      <Animated.Text
-        style={[
-          styles.tagline,
-          { 
-            opacity: taglineAnim, 
-            color: theme.textSecondary,
-            transform: [{ translateY: taglineAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] 
-          },
-        ]}
-      >
-        Homemade goodness, delivered
-      </Animated.Text>
-
-      <Animated.Text style={[styles.version, { opacity: taglineAnim, color: theme.border }]}>
-        v1.0.0
-      </Animated.Text>
     </View>
   );
 }
@@ -91,29 +74,25 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    width: width * 0.7,
+    height: width * 0.7,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 5,
   },
   logo: {
-    width: 220,
-    height: 220,
-  },
-  tagline: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#60646C',
-    marginTop: 12,
-    letterSpacing: 0.5,
-  },
-  version: {
-    position: 'absolute',
-    bottom: 50,
-    fontSize: 12,
-    color: '#B0B4BA',
+    width: '100%',
+    height: '100%',
   },
 });
