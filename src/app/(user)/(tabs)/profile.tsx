@@ -81,7 +81,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background, paddingTop: Math.max(insets.top, 16) }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 100, 120) }]}>
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <Pressable onPress={handlePickImage} style={[styles.avatarLarge, { backgroundColor: theme.primary, overflow: 'hidden' }]}>
