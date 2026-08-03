@@ -9,7 +9,7 @@ import { useChatStore } from '@/hooks/useChatStore';
  */
 export function useUnreadMessages(): boolean {
   const { user } = useAuthStore();
-  const { readConversationIds } = useChatStore();
+  const { readTimestamps } = useChatStore();
   const [hasUnread, setHasUnread] = useState(false);
 
   useEffect(() => {
@@ -18,7 +18,11 @@ export function useUnreadMessages(): boolean {
         const conversations = await api.chat.getConversations();
         const unread = conversations.some((c: any) => {
           const convKey = c.orderId ? `order-${c.orderId}` : c.otherUser?.id;
-          const isRead = readConversationIds.includes(convKey);
+          
+          const localReadTimestamp = readTimestamps[convKey];
+          const isLocallyRead = localReadTimestamp && new Date(c.timestamp) <= new Date(localReadTimestamp);
+          const isRead = c.lastMessageIsRead || isLocallyRead;
+          
           const lastMsgIsIncoming = c.lastSenderId && c.lastSenderId !== user?.id;
           
           if (!isRead && lastMsgIsIncoming && c.lastMessage) {
@@ -38,7 +42,7 @@ export function useUnreadMessages(): boolean {
     check();
     const interval = setInterval(check, 5000);
     return () => clearInterval(interval);
-  }, [user?.id, readConversationIds]);
+  }, [user?.id, readTimestamps]);
 
   return hasUnread;
 }

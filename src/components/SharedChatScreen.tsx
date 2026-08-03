@@ -38,7 +38,7 @@ export function SharedChatScreen({ role }: { role: 'user' | 'vendor' | 'admin' }
   const [newMessage, setNewMessage] = useState('');
   
   // Unread / Read tracking — from global store
-  const { readConversationIds, markAsRead } = useChatStore();
+  const { readTimestamps, markAsRead } = useChatStore();
   
   // Voice Mock State
   const [isRecording, setIsRecording] = useState(false);
@@ -111,7 +111,7 @@ export function SharedChatScreen({ role }: { role: 'user' | 'vendor' | 'admin' }
     setMessagesLoading(true);
     
     // Mark this conversation as read globally
-    markAsRead(convKey);
+    markAsRead(convKey, partnerOrGroup.timestamp || new Date().toISOString());
     
     try {
       const msgs = await api.chat.getConversation(partner.id, orderId);
@@ -180,7 +180,9 @@ export function SharedChatScreen({ role }: { role: 'user' | 'vendor' | 'admin' }
   const renderConversation = ({ item }: { item: any }) => {
     const timeFormatted = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const convKey = item.orderId ? `order-${item.orderId}` : item.otherUser?.id;
-    const isRead = readConversationIds.includes(convKey);
+    const localReadTimestamp = readTimestamps[convKey];
+    const isLocallyRead = localReadTimestamp && new Date(item.timestamp) <= new Date(localReadTimestamp);
+    const isRead = item.lastMessageIsRead || isLocallyRead;
     // Unread = last message was from the other person AND we haven't opened it
     const lastMsgIsIncoming = item.lastSenderId && item.lastSenderId !== user?.id;
     const hasUnread = !isRead && lastMsgIsIncoming;
