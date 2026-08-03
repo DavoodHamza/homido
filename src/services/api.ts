@@ -211,6 +211,7 @@ export const api = {
       
     // Reviews
     getReviews: (id: string) => request(`/menu/${id}/reviews`),
+    getMyReviews: () => request('/menu/reviews/me'),
     addReview: (id: string, rating: number, comment: string) => 
       request(`/menu/${id}/reviews`, {
         method: 'POST',

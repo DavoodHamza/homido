@@ -5,7 +5,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/hooks/useAuthStore';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '@/services/api';
 
@@ -31,6 +31,32 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { logout, user, updateUser } = useAuthStore();
   const [isUploading, setIsUploading] = useState(false);
+  const [stats, setStats] = useState({ orders: 0, favorites: 0, reviews: 0 });
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchStats = async () => {
+        try {
+          const [orders, favorites, reviews] = await Promise.all([
+            api.orders.get(),
+            api.menu.getFavorites(),
+            api.menu.getMyReviews(),
+          ]);
+          setStats({
+            orders: Array.isArray(orders) ? orders.length : 0,
+            favorites: Array.isArray(favorites) ? favorites.length : 0,
+            reviews: Array.isArray(reviews) ? reviews.length : 0,
+          });
+        } catch (e) {
+          console.error('Failed to fetch user stats', e);
+        }
+      };
+      
+      if (user) {
+        fetchStats();
+      }
+    }, [user])
+  );
 
   const handleSettingsPress = async (item: any) => {
     if (item.action === 'support-chat') {
@@ -107,17 +133,17 @@ export default function ProfileScreen() {
         {/* Stats Row */}
         <View style={[styles.statsRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.statItem}>
-            <ThemedText style={[styles.statNumber, { color: theme.primary }]}>24</ThemedText>
+            <ThemedText style={[styles.statNumber, { color: theme.primary }]}>{stats.orders}</ThemedText>
             <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>Orders</ThemedText>
           </View>
           <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
           <View style={styles.statItem}>
-            <ThemedText style={[styles.statNumber, { color: theme.primary }]}>12</ThemedText>
+            <ThemedText style={[styles.statNumber, { color: theme.primary }]}>{stats.favorites}</ThemedText>
             <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>Favorites</ThemedText>
           </View>
           <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
           <View style={styles.statItem}>
-            <ThemedText style={[styles.statNumber, { color: theme.primary }]}>8</ThemedText>
+            <ThemedText style={[styles.statNumber, { color: theme.primary }]}>{stats.reviews}</ThemedText>
             <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>Reviews</ThemedText>
           </View>
         </View>
