@@ -194,7 +194,7 @@ export function SharedChatScreen({ role }: { role: 'user' | 'vendor' | 'admin' }
       >
         <View style={styles.avatarContainer}>
           <Image 
-            source={{ uri: `https://ui-avatars.com/api/?name=${item.otherUser?.name || 'Support'}&background=random` }} 
+            source={{ uri: `https://ui-avatars.com/api/?name=${item.otherUser?.role === 'admin' ? 'Support' : (item.otherUser?.name || 'User')}&background=${theme.primary.replace('#', '')}&color=fff` }} 
             style={styles.avatar}
           />
           {/* Green unread dot */}
@@ -204,7 +204,7 @@ export function SharedChatScreen({ role }: { role: 'user' | 'vendor' | 'admin' }
         </View>
         <View style={styles.messageContent}>
           <View style={styles.messageTop}>
-            <ThemedText style={[styles.senderName, hasUnread && { fontWeight: '800' }]}>{item.otherUser?.name}</ThemedText>
+            <ThemedText style={[styles.senderName, hasUnread && { fontWeight: '800' }]}>{item.otherUser?.role === 'admin' ? 'Support' : item.otherUser?.name}</ThemedText>
             <ThemedText style={[styles.timeText, { color: hasUnread ? '#22C55E' : theme.textSecondary }]}>{timeFormatted}</ThemedText>
           </View>
           <View style={styles.messageBottom}>
@@ -237,7 +237,7 @@ export function SharedChatScreen({ role }: { role: 'user' | 'vendor' | 'admin' }
           onPress={async () => {
             const admin = await api.users.getPrimaryAdmin();
             if (admin && admin.id) {
-              openConversation(admin);
+              openConversation({ ...admin, name: 'Support' });
             }
           }}
         >
@@ -323,7 +323,7 @@ export function SharedChatScreen({ role }: { role: 'user' | 'vendor' | 'admin' }
                 
                 <View style={[styles.headerProfile, { flex: 1, justifyContent: 'center', marginHorizontal: 10 }]}>
                   <Image 
-                    source={{ uri: `https://ui-avatars.com/api/?name=${selectedPartner?.name}&background=random` }} 
+                    source={{ uri: `https://ui-avatars.com/api/?name=${selectedPartner?.name}&background=${theme.primary.replace('#', '')}&color=fff` }} 
                     style={styles.headerAvatar}
                   />
                   <View style={{ flex: 1 }}>
