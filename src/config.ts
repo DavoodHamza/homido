@@ -8,30 +8,38 @@ import { Platform } from 'react-native';
  * - iOS Simulators / Fallback: uses localhost
  */
 const resolveBaseUrl = (): string => {
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (hostUri) {
-    const ip = hostUri.split(':')[0];
-    return `http://${ip}:3000/api`;
-  }
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3000/api';
-  }
-  return 'http://localhost:3000/api';
+  // Production URL
+  return 'http://140.245.199.41:3000/api';
+
+  // Local Development URLs
+  // const hostUri = Constants.expoConfig?.hostUri;
+  // if (hostUri) {
+  //   const ip = hostUri.split(':')[0];
+  //   return `http://${ip}:3000/api`;
+  // }
+  // if (Platform.OS === 'android') {
+  //   return 'http://10.0.2.2:3000/api';
+  // }
+  // return 'http://localhost:3000/api';
 };
 
 /**
  * Root of the server (without /api) — used to build uploaded file URLs.
  */
 const resolveServerRoot = (): string => {
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (hostUri) {
-    const ip = hostUri.split(':')[0];
-    return `http://${ip}:3000`;
-  }
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3000';
-  }
-  return 'http://localhost:3000';
+  // Production URL
+  return 'http://140.245.199.41:3000';
+
+  // Local Development URLs
+  // const hostUri = Constants.expoConfig?.hostUri;
+  // if (hostUri) {
+  //   const ip = hostUri.split(':')[0];
+  //   return `http://${ip}:3000`;
+  // }
+  // if (Platform.OS === 'android') {
+  //   return 'http://10.0.2.2:3000';
+  // }
+  // return 'http://localhost:3000';
 };
 
 export const API_CONFIG = {
